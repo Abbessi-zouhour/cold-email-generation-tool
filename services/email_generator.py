@@ -1,13 +1,24 @@
-from dotenv import load_dotenv
-import os
-from langchain_groq import ChatGroq
+from models.llm import get_llm
 
-load_dotenv()
+def generate_email(candidate_name, job_title, company, country, matched_skills):
+    llm = get_llm()
 
+    prompt = f"""
+    Write a professional recruitment agency email.
 
-def get_llm():
-    return ChatGroq(
-        model="llama-3.3-70b-versatile",
-        api_key=os.getenv("GROQ_API_KEY"),
-        temperature=0.7
-    )
+    Candidate: {candidate_name}
+    Job title: {job_title}
+    Company: {company}
+    Country: {country}
+    Matched skills: {matched_skills}
+
+    The email should:
+    - Be professional
+    - Mention that our agency found an opportunity abroad
+    - Mention the matched skills
+    - Ask if the candidate is interested
+    - Include a subject line
+    """
+
+    response = llm.invoke(prompt)
+    return response.content

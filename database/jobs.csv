@@ -1,0 +1,11 @@
+id,company,country,job_title,required_skills,experience_required,language_required,salary_range,status
+1,Google,Germany,Software Engineer,"Python,AWS,Docker,FastAPI",3,"English B2","50000-70000",Open
+2,Amazon,Netherlands,Backend Developer,"Java,Spring Boot,MySQL",2,"English B2","45000-65000",Open
+3,Spotify,Sweden,Frontend Developer,"React,JavaScript,HTML,CSS",2,"English B2","45000-60000",Open
+4,Microsoft,Canada,Cloud Engineer,"AWS,Terraform,Kubernetes,Docker",4,"English C1","60000-85000",Open
+5,SAP,Germany,Full Stack Developer,"React,Node.js,MongoDB",3,"English B2","50000-70000",Open
+6,Accenture,France,PHP Developer,"PHP,Laravel,MySQL",2,"French B2","40000-55000",Open
+7,Airbus,France,Data Engineer,"Python,SQL,Machine Learning",3,"English B2","55000-75000",Open
+8,Booking.com,Netherlands,DevOps Engineer,"Docker,Jenkins,AWS,Kubernetes",4,"English C1","65000-90000",Open
+9,Meta,Ireland,AI Engineer,"Python,Machine Learning,FastAPI",3,"English C1","70000-100000",Open
+10,Shopify,Canada,Software Engineer,"Python,Django,PostgreSQL",3,"English B2","55000-75000",Open

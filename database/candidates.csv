@@ -1,0 +1,11 @@
+id,name,email,phone,country,experience_years,languages,skills,status
+1,Ahmed Ben Ali,ahmed.benali@gmail.com,+21612345678,Tunisia,3,"Arabic,English,French","Python,AWS,Docker,FastAPI",Available
+2,Sara El Amrani,sara.amrani@gmail.com,+212612345678,Morocco,2,"Arabic,English,French","Java,Spring Boot,MySQL",Available
+3,Youssef Trabelsi,youssef.trabelsi@gmail.com,+21698765432,Tunisia,5,"Arabic,English","Python,Django,PostgreSQL,Docker",Interviewing
+4,Amine Khelifi,amine.khelifi@gmail.com,+213551234567,Algeria,4,"Arabic,French,English","React,Node.js,MongoDB",Available
+5,Fatima Zahra,fatima.zahra@gmail.com,+212698765432,Morocco,1,"Arabic,English","HTML,CSS,JavaScript,React",Available
+6,Mohamed Salah,m.salah@gmail.com,+201112223334,Egypt,6,"Arabic,English","AWS,Kubernetes,Docker,Terraform",Available
+7,Leila Mansouri,leila.mansouri@gmail.com,+213661234567,Algeria,3,"Arabic,French","PHP,Laravel,MySQL",Placed
+8,Omar Ben Salem,omar.bensalem@gmail.com,+21655667788,Tunisia,4,"Arabic,English,French","Python,FastAPI,Machine Learning",Available
+9,Hiba Cherif,hiba.cherif@gmail.com,+212677889900,Morocco,2,"Arabic,French,English","UI/UX,Figma,React",Available
+10,Khaled Nasser,khaled.nasser@gmail.com,+201223344556,Egypt,7,"Arabic,English","DevOps,AWS,Docker,Jenkins",Available
