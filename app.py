@@ -1,14 +1,9 @@
 import streamlit as st
-from dotenv import load_dotenv
-import os
-from langchain_groq import ChatGroq
+from services.email_generator import generate_email
 
-load_dotenv()
-
-llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
-    api_key=os.getenv("GROQ_API_KEY"),
-    temperature=0.7
+st.set_page_config(
+    page_title="AI Cold Email Generator",
+    page_icon="📧"
 )
 
 st.title("📧 AI Cold Email Generator")
@@ -17,18 +12,10 @@ job_role = st.text_input("Job Role")
 company = st.text_input("Company")
 
 if st.button("Generate Email"):
-    prompt = f"""
-    Write a professional cold email for a candidate applying for a
-    {job_role} position at {company}.
+    if job_role and company:
+        email = generate_email(job_role, company)
 
-    The email should:
-    - Be concise
-    - Sound professional
-    - Show enthusiasm
-    - Ask for an opportunity to discuss further
-    """
-
-    response = llm.invoke(prompt)
-
-    st.subheader("Generated Email")
-    st.write(response.content)
+        st.subheader("Generated Email")
+        st.write(email)
+    else:
+        st.warning("Please fill in all fields.")
