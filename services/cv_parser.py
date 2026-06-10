@@ -1,5 +1,6 @@
 from models.llm import get_llm
 
+
 def parse_cv(cv_text):
     llm = get_llm()
 

@@ -6,6 +6,9 @@ from services.email_generator import generate_email
 from services.job_analyzer import analyze_job_offer
 from services.cv_parser import parse_cv
 from services.client_agent import generate_client_delay_message, generate_client_progress_update
+from services.resume_reader import extract_text_from_pdf
+from services.ats_score import calculate_ats_score
+
 
 
 st.set_page_config(
@@ -111,10 +114,14 @@ menu = st.sidebar.radio(
         "Job Offers",
         "Candidates",
         "Candidate Matching",
+        "Candidate Pipeline",
         "Email Generator",
         "Job Analyzer",
         "CV Parser",
+        "ATS Score",
+        "Cover Letter Generator",
         "Client Communication Agent"
+        
     ]
 )
 
@@ -225,7 +232,80 @@ elif menu == "Candidates":
 
     st.dataframe(filtered_candidates, use_container_width=True, hide_index=True)
 
+elif menu == "ATS Score":
+    st.markdown('<div class="section-title">ATS Score Calculator</div>', unsafe_allow_html=True)
 
+    st.caption("Upload a resume PDF and compare it against a selected job offer.")
+
+    job_options = jobs["company"] + " - " + jobs["job_title"]
+    selected_job = st.selectbox("Select Target Job", job_options)
+
+    job_index = job_options[job_options == selected_job].index[0]
+    job = jobs.loc[job_index]
+
+    st.markdown(f"""
+    <div class="card">
+        <h3>{job['company']} - {job['job_title']}</h3>
+        <p><b>Country:</b> {job['country']}</p>
+        <p><b>Required Skills:</b> {job['required_skills']}</p>
+        <p><b>Experience Required:</b> {job['experience_required']} years</p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    uploaded_file = st.file_uploader(
+        "Upload Resume PDF",
+        type=["pdf"]
+    )
+
+    cv_text = ""
+
+    if uploaded_file is not None:
+        cv_text = extract_text_from_pdf(uploaded_file)
+        st.success("Resume uploaded successfully.")
+
+        with st.expander("Preview extracted resume text"):
+            st.text_area("Extracted Resume Text", cv_text, height=220)
+
+    if st.button("Calculate ATS Score", use_container_width=True):
+        if cv_text.strip():
+            result = calculate_ats_score(
+                cv_text=cv_text,
+                job_skills=job["required_skills"]
+            )
+
+            st.markdown("### ATS Result")
+
+            st.metric("ATS Score", f"{result['score']}%")
+            st.progress(result["score"] / 100)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.success("Matched Skills")
+                if result["matched_skills"]:
+                    for skill in result["matched_skills"]:
+                        st.write(f"✅ {skill}")
+                else:
+                    st.write("No matched skills found.")
+
+            with col2:
+                st.warning("Missing Skills")
+                if result["missing_skills"]:
+                    for skill in result["missing_skills"]:
+                        st.write(f"⚠️ {skill}")
+                else:
+                    st.write("No missing skills. Great match!")
+
+            st.info("Improvement Suggestions")
+
+            if result["recommendations"]:
+                for recommendation in result["recommendations"]:
+                    st.write(f"• {recommendation}")
+            else:
+                st.write("The resume already covers all required skills.")
+
+        else:
+            st.warning("Please upload a resume PDF first.")
 elif menu == "Candidate Matching":
     st.markdown('<div class="section-title">Candidate Matching</div>', unsafe_allow_html=True)
 
@@ -334,21 +414,29 @@ elif menu == "Job Analyzer":
 elif menu == "CV Parser":
     st.markdown('<div class="section-title">CV Parser</div>', unsafe_allow_html=True)
 
-    cv_text = st.text_area(
-        "Paste CV text here",
-        height=260,
-        placeholder="Paste candidate CV text here..."
+    uploaded_file = st.file_uploader(
+        "Upload CV as PDF",
+        type=["pdf"]
     )
 
+    final_cv_text = ""
+
+    if uploaded_file is not None:
+        final_cv_text = extract_text_from_pdf(uploaded_file)
+        st.success("PDF uploaded and text extracted successfully.")
+
+        with st.expander("Preview extracted CV text"):
+            st.text_area("Extracted Text", final_cv_text, height=220)
+
     if st.button("Parse CV", use_container_width=True):
-        if cv_text.strip():
+        if final_cv_text.strip():
             with st.spinner("Parsing CV..."):
-                result = parse_cv(cv_text)
+                result = parse_cv(final_cv_text)
 
             st.success("CV parsed successfully.")
             st.markdown(result)
         else:
-            st.warning("Please paste CV text first.")
+            st.warning("Please upload a PDF CV first.")
 elif menu == "Client Communication Agent":
     st.markdown('<div class="section-title">Client Communication Agent</div>', unsafe_allow_html=True)
 
@@ -506,3 +594,38 @@ elif menu == "Client Communication Agent":
             use_container_width=True,
             hide_index=True
         )
+elif menu == "Candidate Pipeline":
+    st.markdown('<div class="section-title">Candidate Pipeline</div>', unsafe_allow_html=True)
+
+    st.caption("Track candidates across the recruitment process.")
+
+    stages = [
+        "Applied",
+        "Screening",
+        "Interview Scheduled",
+        "Client Review",
+        "Offer Sent",
+        "Hired",
+        "Rejected"
+    ]
+
+    cols = st.columns(len(stages))
+
+    for col, stage in zip(cols, stages):
+        with col:
+            st.markdown(f"#### {stage}")
+
+            stage_candidates = candidates[candidates["pipeline_stage"] == stage]
+
+            if stage_candidates.empty:
+                st.caption("No candidates")
+            else:
+                for _, candidate in stage_candidates.iterrows():
+                    st.markdown(f"""
+                    <div class="card">
+                        <b>{candidate['name']}</b><br>
+                        <span style="color:#6b7280;">{candidate['country']}</span><br>
+                        <span>{candidate['experience_years']} years experience</span><br>
+                        <small>{candidate['skills']}</small>
+                    </div>
+                    """, unsafe_allow_html=True)
