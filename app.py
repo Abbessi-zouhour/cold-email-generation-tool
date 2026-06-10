@@ -10,6 +10,7 @@ from services.resume_reader import extract_text_from_pdf
 from services.ats_score import calculate_ats_score
 from services.cover_letter_generator import generate_cover_letter
 from services.job_api import fetch_remotive_jobs
+from services.assistant_agent import ask_assistant
 
 
 
@@ -156,7 +157,8 @@ menu = st.sidebar.radio(
         "CV Parser",
         "ATS Score",
         "Cover Letter Generator",
-        "Client Communication Agent"
+        "Client Communication Agent",
+        "AI Assistant"
         
     ]
 )
@@ -702,3 +704,35 @@ elif menu == "Cover Letter Generator":
             st.text_area("Generated Cover Letter", cover_letter, height=400)
         else:
             st.warning("Please upload a resume PDF and paste a job description.")
+elif menu == "AI Assistant":
+    st.markdown('<div class="section-title">AI Assistant</div>', unsafe_allow_html=True)
+
+    st.caption("Ask questions about candidates, jobs, resumes, ATS scores, or recruitment workflows.")
+
+    user_question = st.chat_input("Ask TalentBridge AI...")
+
+    if "chat_history" not in st.session_state:
+        st.session_state.chat_history = []
+
+    for message in st.session_state.chat_history:
+        with st.chat_message(message["role"]):
+            st.write(message["content"])
+
+    if user_question:
+        st.session_state.chat_history.append({
+            "role": "user",
+            "content": user_question
+        })
+
+        with st.chat_message("user"):
+            st.write(user_question)
+
+        with st.chat_message("assistant"):
+            with st.spinner("Thinking..."):
+                answer = ask_assistant(user_question, candidates, jobs)
+                st.write(answer)
+
+        st.session_state.chat_history.append({
+            "role": "assistant",
+            "content": answer
+        })
