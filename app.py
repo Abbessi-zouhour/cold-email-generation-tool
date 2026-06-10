@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from pathlib import Path
 
 from services.candidate_matcher import match_candidates
 from services.email_generator import generate_email
@@ -12,23 +13,18 @@ from services.cover_letter_generator import generate_cover_letter
 from services.job_api import fetch_remotive_jobs
 from services.assistant_agent import ask_assistant
 
-
-
 st.set_page_config(
     page_title="TalentBridge",
     page_icon="TB",
     layout="wide"
 )
 
-st.markdown("""
-<div class="hero-card">
-    <div class="hero-title">TalentBridge</div>
-    <div class="hero-subtitle">
-        AI-Powered Recruitment Intelligence Platform
-    </div>
-</div>
-""", unsafe_allow_html=True)
+def load_css():
+    css_path = Path(__file__).parent / "assets" / "main.css"
+    with open(css_path, "r", encoding="utf-8") as f:
+        st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
+load_css()
 
 st.sidebar.markdown("### Upload Your Data")
 
@@ -71,6 +67,15 @@ else:
 
 clients = load_csv(uploaded_clients, "database/clients.csv")
 
+st.markdown("""
+            
+<div class="nav-links">
+    <a href="#">Dashboard</a>
+    <a href="#">Candidates</a>
+    <a href="#">Pipeline</a>
+    <a href="#">AI Assistant</a>
+</div>
+""", unsafe_allow_html=True)
 
 st.sidebar.markdown("""
 <div class="logo-box">
@@ -99,15 +104,6 @@ menu = st.sidebar.radio(
 )
 
 
-st.markdown("""
-<h1 class="main-title">TalentBridge</h1>
-<p class="subtitle">
-A professional recruitment platform for matching talent with international job opportunities.
-</p>
-""", unsafe_allow_html=True)
-
-st.divider()
-
 
 if menu == "Dashboard":
     total_candidates = len(candidates)
@@ -115,41 +111,11 @@ if menu == "Dashboard":
     available_candidates = len(candidates[candidates["status"] == "Available"])
     placed_candidates = len(candidates[candidates["status"] == "Placed"])
 
-    st.markdown('<div class="section-title">Dashboard Overview</div>', unsafe_allow_html=True)
-
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-label">Total Candidates</div>
-            <div class="kpi-value">{total_candidates}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-label">Open Positions</div>
-            <div class="kpi-value">{open_jobs}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col3:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-label">Available Talent</div>
-            <div class="kpi-value">{available_candidates}</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col4:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-label">Placed Candidates</div>
-            <div class="kpi-value">{placed_candidates}</div>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown(f"""
+<h1 class="hero-title">AI-powered <span>recruitment intelligence</span> platform</h1><p class="hero-subtitle">Manage candidates, analyze resumes, calculate ATS scores, match jobs, and get AI-powered recruitment insights in one platform.</p>
+<div class="stats-grid"><div class="stat"><h2>{total_candidates}</h2><p>Total candidates</p></div><div class="stat"><h2>{open_jobs}</h2><p>Open positions</p></div><div class="stat"><h2>{available_candidates}</h2><p>Available talent</p></div><div class="stat"><h2>{placed_candidates}</h2><p>Placed candidates</p></div></div>
+<div class="section"><div class="section-eyebrow">FEATURES</div><h2 class="section-title">Everything recruiters need</h2><p class="section-subtitle">AI-powered recruitment workflows for candidates, jobs, resumes and client communication.</p></div>
+""", unsafe_allow_html=True)
 
     st.write("")
     left, right = st.columns([2, 1])
@@ -567,9 +533,11 @@ elif menu == "Client Communication Agent":
             hide_index=True
         )
 elif menu == "Candidate Pipeline":
-    st.markdown('<div class="section-title">Candidate Pipeline</div>', unsafe_allow_html=True)
-
-    st.caption("Track candidates across the recruitment process.")
+    st.markdown("""
+    <div class="section-eyebrow">PIPELINE</div>
+    <h2 class="section-title">Candidate pipeline</h2>
+    <p class="section-subtitle">Track candidates across the recruitment process.</p>
+    """, unsafe_allow_html=True)
 
     stages = [
         "Applied",
@@ -581,26 +549,49 @@ elif menu == "Candidate Pipeline":
         "Rejected"
     ]
 
-    cols = st.columns(len(stages))
+    pipeline_html = '<div class="kanban-board">'
 
-    for col, stage in zip(cols, stages):
-        with col:
-            st.markdown(f"#### {stage}")
+    for stage in stages:
+        stage_candidates = candidates[candidates["pipeline_stage"] == stage]
 
-            stage_candidates = candidates[candidates["pipeline_stage"] == stage]
+        pipeline_html += f"""
+        <div class="kanban-column">
+            <div class="kanban-header">
+                <span>{stage}</span>
+                <span class="count-badge">{len(stage_candidates)}</span>
+            </div>
+        """
 
-            if stage_candidates.empty:
-                st.caption("No candidates")
-            else:
-                for _, candidate in stage_candidates.iterrows():
-                    st.markdown(f"""
-                    <div class="card">
-                        <b>{candidate['name']}</b><br>
-                        <span style="color:#6b7280;">{candidate['country']}</span><br>
-                        <span>{candidate['experience_years']} years experience</span><br>
-                        <small>{candidate['skills']}</small>
-                    </div>
-                    """, unsafe_allow_html=True)
+        if stage_candidates.empty:
+            pipeline_html += '<p class="candidate-meta">No candidates</p>'
+        else:
+            for _, candidate in stage_candidates.iterrows():
+                skills = str(candidate["skills"])
+                main_skill = skills.split(",")[0].strip()
+
+                skill_class = "tag-python"
+                if "react" in main_skill.lower():
+                    skill_class = "tag-react"
+                elif "devops" in main_skill.lower() or "docker" in main_skill.lower():
+                    skill_class = "tag-devops"
+                elif "data" in main_skill.lower() or "sql" in main_skill.lower():
+                    skill_class = "tag-data"
+                elif "ml" in main_skill.lower() or "machine" in main_skill.lower():
+                    skill_class = "tag-ml"
+
+                pipeline_html += f"""
+                <div class="candidate-card">
+                    <div class="candidate-name">{candidate['name']}</div>
+                    <div class="candidate-meta">{candidate['experience_years']} years • {candidate['country']}</div>
+                    <span class="tag {skill_class}">{main_skill}</span>
+                </div>
+                """
+
+        pipeline_html += "</div>"
+
+    pipeline_html += "</div>"
+
+    st.markdown(pipeline_html, unsafe_allow_html=True)
 
 elif menu == "Cover Letter Generator":
     st.markdown('<div class="section-title">Cover Letter Generator</div>', unsafe_allow_html=True)
