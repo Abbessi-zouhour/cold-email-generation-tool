@@ -5,6 +5,7 @@ from services.candidate_matcher import load_data, match_candidates
 from services.email_generator import generate_email
 from services.job_analyzer import analyze_job_offer
 from services.cv_parser import parse_cv
+from services.client_agent import generate_client_delay_message, generate_client_progress_update
 
 
 st.set_page_config(
@@ -12,7 +13,7 @@ st.set_page_config(
     page_icon="TB",
     layout="wide"
 )
-
+clients = pd.read_csv("database/clients.csv")
 
 st.markdown("""
 <style>
@@ -112,7 +113,8 @@ menu = st.sidebar.radio(
         "Candidate Matching",
         "Email Generator",
         "Job Analyzer",
-        "CV Parser"
+        "CV Parser",
+        "Client Communication Agent"
     ]
 )
 
@@ -347,3 +349,160 @@ elif menu == "CV Parser":
             st.markdown(result)
         else:
             st.warning("Please paste CV text first.")
+elif menu == "Client Communication Agent":
+    st.markdown('<div class="section-title">Client Communication Agent</div>', unsafe_allow_html=True)
+
+    st.caption("Generate professional client messages for delays, progress updates, and service communication.")
+
+    tab1, tab2, tab3 = st.tabs([
+        "Delay Message",
+        "Progress Update",
+        "Client Records"
+    ])
+
+    with tab1:
+        st.subheader("Delay Message Generator")
+
+        client_options = clients["name"] + " - " + clients["service"]
+        selected_client = st.selectbox("Select Client", client_options)
+
+        client_index = client_options[client_options == selected_client].index[0]
+        client = clients.loc[client_index]
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            client_name = st.text_input("Client Name", value=client["name"])
+            service_type = st.text_input("Service Type", value=client["service"])
+            original_deadline = st.text_input("Original Deadline", value=client["deadline"])
+
+        with col2:
+            delay_reason = st.selectbox(
+                "Delay Reason",
+                [
+                    "Additional quality review",
+                    "High workload",
+                    "Missing client information",
+                    "Personalized customization",
+                    "Technical issue",
+                    "Internal review delay"
+                ]
+            )
+
+            new_delivery_date = st.date_input("New Delivery Date")
+
+            tone = st.selectbox(
+                "Tone",
+                [
+                    "Professional",
+                    "Friendly",
+                    "Apologetic",
+                    "Formal",
+                    "Reassuring"
+                ]
+            )
+
+        if st.button("Generate Delay Message", use_container_width=True):
+            with st.spinner("Generating message..."):
+                message = generate_client_delay_message(
+                    client_name=client_name,
+                    service_type=service_type,
+                    delay_reason=delay_reason,
+                    original_deadline=original_deadline,
+                    new_delivery_date=new_delivery_date,
+                    tone=tone
+                )
+
+            st.success("Delay message generated successfully.")
+            st.text_area("Generated Message", message, height=320)
+
+    with tab2:
+        st.subheader("Progress Update Generator")
+
+        client_options_update = clients["name"] + " - " + clients["service"]
+        selected_client_update = st.selectbox(
+            "Select Client for Update",
+            client_options_update,
+            key="progress_client"
+        )
+
+        client_index_update = client_options_update[client_options_update == selected_client_update].index[0]
+        client_update = clients.loc[client_index_update]
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            progress_client_name = st.text_input(
+                "Client Name",
+                value=client_update["name"],
+                key="progress_name"
+            )
+
+            progress_service_type = st.text_input(
+                "Service Type",
+                value=client_update["service"],
+                key="progress_service"
+            )
+
+        with col2:
+            current_status = st.selectbox(
+                "Current Status",
+                [
+                    "Pending",
+                    "In Progress",
+                    "Under Review",
+                    "Delayed",
+                    "Completed"
+                ]
+            )
+
+            next_step = st.text_input(
+                "Next Step",
+                placeholder="Example: Final review before sending the resume"
+            )
+
+            progress_tone = st.selectbox(
+                "Tone",
+                [
+                    "Professional",
+                    "Friendly",
+                    "Formal",
+                    "Reassuring"
+                ],
+                key="progress_tone"
+            )
+
+        if st.button("Generate Progress Update", use_container_width=True):
+            if next_step.strip():
+                with st.spinner("Generating progress update..."):
+                    message = generate_client_progress_update(
+                        client_name=progress_client_name,
+                        service_type=progress_service_type,
+                        current_status=current_status,
+                        next_step=next_step,
+                        tone=progress_tone
+                    )
+
+                st.success("Progress update generated successfully.")
+                st.text_area("Generated Update", message, height=320)
+            else:
+                st.warning("Please enter the next step.")
+
+    with tab3:
+        st.subheader("Client Records")
+
+        status_filter = st.selectbox(
+            "Filter by Status",
+            ["All"] + sorted(clients["status"].unique().tolist())
+        )
+
+        filtered_clients = clients.copy()
+
+        if status_filter != "All":
+            filtered_clients = filtered_clients[filtered_clients["status"] == status_filter]
+
+        st.dataframe(
+            filtered_clients,
+            use_container_width=True,
+            hide_index=True
+        )

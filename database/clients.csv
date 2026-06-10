@@ -1,0 +1,6 @@
+id,name,email,service,deadline,status,notes
+1,John Smith,john.smith@gmail.com,Resume Writing,2026-06-15,Delayed,Needs ATS-friendly resume
+2,Emma Brown,emma.brown@gmail.com,Cover Letter,2026-06-18,In Progress,Applying for marketing roles
+3,Michael Lee,michael.lee@gmail.com,LinkedIn Optimization,2026-06-20,Pending,Needs professional profile rewrite
+4,Sophia Martin,sophia.martin@gmail.com,Full Career Package,2026-06-22,In Progress,Resume cover letter and LinkedIn package
+5,David Wilson,david.wilson@gmail.com,Resume Writing,2026-06-25,Completed,Resume delivered
