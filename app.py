@@ -20,78 +20,13 @@ st.set_page_config(
     layout="wide"
 )
 
-
 st.markdown("""
-<style>
-.block-container {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-}
-
-.main-title {
-    font-size: 42px;
-    font-weight: 800;
-    margin-bottom: 0;
-    color: #111827;
-}
-
-.subtitle {
-    font-size: 17px;
-    color: #6b7280;
-    margin-top: 6px;
-}
-
-.card {
-    background: #ffffff;
-    padding: 22px;
-    border-radius: 18px;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
-    margin-bottom: 18px;
-}
-
-.kpi-card {
-    background: #ffffff;
-    padding: 24px;
-    border-radius: 18px;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.04);
-}
-
-.kpi-label {
-    color: #6b7280;
-    font-size: 14px;
-}
-
-.kpi-value {
-    color: #111827;
-    font-size: 34px;
-    font-weight: 800;
-}
-
-.section-title {
-    font-size: 24px;
-    font-weight: 700;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    color: #111827;
-}
-
-.logo-box {
-    padding: 18px 10px 28px 10px;
-}
-
-.logo-main {
-    font-size: 28px;
-    font-weight: 800;
-    color: #111827;
-}
-
-.logo-sub {
-    font-size: 13px;
-    color: #6b7280;
-}
-</style>
+<div class="hero-card">
+    <div class="hero-title">TalentBridge</div>
+    <div class="hero-subtitle">
+        AI-Powered Recruitment Intelligence Platform
+    </div>
+</div>
 """, unsafe_allow_html=True)
 
 
