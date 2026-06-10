@@ -2,15 +2,9 @@
 
 ## AI-Powered Recruitment Intelligence Platform
 
-TalentBridge is an AI-powered recruitment intelligence platform designed to help recruiters, agencies, and career service providers manage candidates, evaluate resumes, match talent to jobs, and automate professional communication.
+TalentBridge is an AI-powered recruitment intelligence platform that helps recruiters, agencies, and career service providers manage candidates, discover job opportunities, analyze resumes, generate professional communications, and automate recruitment workflows.
 
-The platform combines recruitment workflows with Generative AI to accelerate hiring decisions and improve candidate evaluation.
-
----
-
-## Live Demo
-
-Deployable on Streamlit Cloud.
+The platform combines recruitment operations with Generative AI to improve hiring efficiency and candidate evaluation.
 
 ---
 
@@ -18,13 +12,13 @@ Deployable on Streamlit Cloud.
 
 ### Recruitment Dashboard
 
-Monitor recruitment activity through a centralized dashboard including:
+Monitor recruitment activity through an intuitive dashboard:
 
 * Total candidates
-* Open positions
-* Available talent
-* Placed candidates
+* Open opportunities
+* Candidate availability
 * Recruitment pipeline overview
+* Hiring statistics
 
 ---
 
@@ -33,23 +27,45 @@ Monitor recruitment activity through a centralized dashboard including:
 Manage candidate profiles including:
 
 * Personal information
-* Skills
+* Technical skills
 * Languages
 * Experience level
 * Recruitment status
+
+Users can upload their own candidate datasets via CSV.
+
+---
+
+### Online Job Search
+
+TalentBridge can automatically fetch jobs from online job sources.
+
+Recruiters can:
+
+* Search jobs by keyword
+* Retrieve real job opportunities
+* Match candidates against live opportunities
+
+Examples:
+
+* Python Developer
+* Data Analyst
+* Machine Learning Engineer
+* DevOps Engineer
+* Frontend Developer
 
 ---
 
 ### Job Management
 
-Store and manage international job opportunities:
+Display and analyze:
 
 * Company
 * Country
 * Job title
 * Required skills
 * Experience requirements
-* Salary range
+* Salary information
 * Language requirements
 
 ---
@@ -62,15 +78,29 @@ Automatically rank candidates against job opportunities using:
 * Experience validation
 * Match scoring
 
-The platform identifies the most relevant candidates for a selected role.
+Recruiters can instantly identify the most relevant profiles.
+
+---
+
+### Recruitment Pipeline
+
+Track candidates through:
+
+* Applied
+* Screening
+* Interview Scheduled
+* Client Review
+* Offer Sent
+* Hired
+* Rejected
 
 ---
 
 ### ATS Score Calculator
 
-Upload a resume PDF and compare it against a target job opportunity.
+Upload a resume PDF and compare it against a target role.
 
-Outputs include:
+Outputs:
 
 * ATS compatibility score
 * Matched skills
@@ -102,19 +132,19 @@ Convert unstructured job descriptions into structured information:
 * Job title
 * Required skills
 * Required experience
-* Language requirements
 * Salary information
+* Language requirements
 
 ---
 
 ### AI Recruitment Email Generator
 
-Generate personalized recruitment emails based on:
+Generate personalized outreach emails based on:
 
 * Candidate profile
 * Job opportunity
-* Matching skills
 * Company information
+* Candidate skills
 
 ---
 
@@ -125,7 +155,7 @@ Generate customized cover letters using:
 * Uploaded PDF resume
 * Job description
 
-The AI automatically tailors the cover letter to the position while highlighting relevant experience and skills.
+The AI automatically tailors the cover letter to the position and highlights relevant experience.
 
 ---
 
@@ -135,35 +165,31 @@ Generate professional client communications including:
 
 * Delay notifications
 * Progress updates
-* Service delivery messages
+* Service delivery updates
 
 ---
 
-### Candidate Pipeline
-
-Track candidates through recruitment stages:
-
-* Applied
-* Screening
-* Interview Scheduled
-* Client Review
-* Offer Sent
-* Hired
-* Rejected
-
----
-
-## User Dataset Upload
-
-TalentBridge supports custom datasets.
+## User Data Upload
 
 Users can upload:
 
-* Candidates CSV
-* Jobs CSV
-* Clients CSV
+### Candidates Dataset
 
-If no files are uploaded, the application automatically uses demo datasets.
+CSV format containing:
+
+```text
+id,name,email,phone,country,experience_years,languages,skills,status,pipeline_stage
+```
+
+### Clients Dataset
+
+CSV format containing:
+
+```text
+id,name,email,service,deadline,status,notes
+```
+
+If no datasets are uploaded, TalentBridge uses default demo datasets.
 
 ---
 
@@ -190,6 +216,11 @@ If no files are uploaded, the application automatically uses demo datasets.
 * Groq API
 * Llama 3.3 70B Versatile
 * LangChain
+* LangChain-Groq
+
+### Job Discovery
+
+* Remotive API
 
 ---
 
@@ -216,10 +247,12 @@ TalentBridge/
 │   ├── cv_parser.py
 │   ├── email_generator.py
 │   ├── job_analyzer.py
+│   ├── job_api.py
 │   └── resume_reader.py
 │
 ├── requirements.txt
-└── README.md
+├── README.md
+└── .gitignore
 ```
 
 ---
@@ -279,25 +312,49 @@ streamlit run app.py
 
 ---
 
-## Future Improvements
+## Deployment
 
-* User authentication
-* PostgreSQL database
+TalentBridge is designed to be deployed on Streamlit Community Cloud.
+
+Required Streamlit Secret:
+
+```toml
+GROQ_API_KEY="your_groq_api_key"
+```
+
+---
+
+## Future Roadmap
+
+### Recruitment Intelligence
+
 * Semantic candidate search
 * AI recruitment copilot
+* Candidate recommendation engine
 * Interview scheduling assistant
-* Resume ranking system
-* Recruiter dashboard
-* Multi-user workspace
+
+### Platform Features
+
+* User authentication
+* Recruiter accounts
+* PostgreSQL database
+* Multi-user workspaces
+
+### AI Enhancements
+
+* Multi-agent architecture
+* RAG-powered candidate search
+* Talent knowledge base
+* Automated hiring insights
 
 ---
 
 ## Author
 
-Developed by Zouhour Abbessi as an AI-powered recruitment intelligence platform demonstrating the integration of Generative AI into recruitment and career services workflows.
+Developed by Zouhour Abbessi as an AI-powered recruitment intelligence platform demonstrating how Generative AI can enhance recruitment workflows, candidate evaluation, and client communication.
 
 ---
 
 ## License
 
-This project is intended for educational, portfolio, and research purposes.
+Educational, portfolio, and research purposes.
