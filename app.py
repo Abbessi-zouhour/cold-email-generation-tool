@@ -9,6 +9,7 @@ from services.client_agent import generate_client_delay_message, generate_client
 from services.resume_reader import extract_text_from_pdf
 from services.ats_score import calculate_ats_score
 from services.cover_letter_generator import generate_cover_letter
+from services.job_api import fetch_remotive_jobs
 
 
 
@@ -99,6 +100,14 @@ uploaded_candidates = st.sidebar.file_uploader(
     "Upload candidates CSV",
     type=["csv"]
 )
+st.sidebar.markdown("### Search Online Jobs")
+
+job_search_keyword = st.sidebar.text_input(
+    "Search jobs online",
+    value="python developer"
+)
+
+use_online_jobs = st.sidebar.button("Fetch Online Jobs")
 
 uploaded_jobs = st.sidebar.file_uploader(
     "Upload jobs CSV",
@@ -118,7 +127,12 @@ def load_csv(uploaded_file, default_path):
 
 
 candidates = load_csv(uploaded_candidates, "database/candidates.csv")
-jobs = load_csv(uploaded_jobs, "database/jobs.csv")
+
+if use_online_jobs:
+    jobs = fetch_remotive_jobs(job_search_keyword)
+else:
+    jobs = load_csv(uploaded_jobs, "database/jobs.csv")
+
 clients = load_csv(uploaded_clients, "database/clients.csv")
 
 
