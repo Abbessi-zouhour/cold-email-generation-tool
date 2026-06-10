@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 
-from services.candidate_matcher import load_data, match_candidates
+from services.candidate_matcher import match_candidates
 from services.email_generator import generate_email
 from services.job_analyzer import analyze_job_offer
 from services.cv_parser import parse_cv
 from services.client_agent import generate_client_delay_message, generate_client_progress_update
 from services.resume_reader import extract_text_from_pdf
 from services.ats_score import calculate_ats_score
+from services.cover_letter_generator import generate_cover_letter
 
 
 
@@ -16,7 +17,7 @@ st.set_page_config(
     page_icon="TB",
     layout="wide"
 )
-clients = pd.read_csv("database/clients.csv")
+
 
 st.markdown("""
 <style>
@@ -92,12 +93,33 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-@st.cache_data
-def get_data():
-    return load_data()
+st.sidebar.markdown("### Upload Your Data")
+
+uploaded_candidates = st.sidebar.file_uploader(
+    "Upload candidates CSV",
+    type=["csv"]
+)
+
+uploaded_jobs = st.sidebar.file_uploader(
+    "Upload jobs CSV",
+    type=["csv"]
+)
+
+uploaded_clients = st.sidebar.file_uploader(
+    "Upload clients CSV",
+    type=["csv"]
+)
 
 
-candidates, jobs = get_data()
+def load_csv(uploaded_file, default_path):
+    if uploaded_file is not None:
+        return pd.read_csv(uploaded_file)
+    return pd.read_csv(default_path)
+
+
+candidates = load_csv(uploaded_candidates, "database/candidates.csv")
+jobs = load_csv(uploaded_jobs, "database/jobs.csv")
+clients = load_csv(uploaded_clients, "database/clients.csv")
 
 
 st.sidebar.markdown("""
@@ -315,7 +337,7 @@ elif menu == "Candidate Matching":
     job_index = job_options[job_options == selected_job].index[0]
     job_id = int(jobs.loc[job_index, "id"])
 
-    job, matches = match_candidates(job_id)
+    job, matches = match_candidates(job_id, candidates, jobs) 
 
     st.markdown(f"""
     <div class="card">
@@ -344,8 +366,7 @@ elif menu == "Email Generator":
     job_index = job_options[job_options == selected_job].index[0]
     job_id = int(jobs.loc[job_index, "id"])
 
-    job, matches = match_candidates(job_id)
-
+    job, matches = match_candidates(job_id, candidates, jobs)
     if matches.empty:
         st.warning("No candidates found for this job.")
     else:
@@ -629,3 +650,41 @@ elif menu == "Candidate Pipeline":
                         <small>{candidate['skills']}</small>
                     </div>
                     """, unsafe_allow_html=True)
+
+elif menu == "Cover Letter Generator":
+    st.markdown('<div class="section-title">Cover Letter Generator</div>', unsafe_allow_html=True)
+
+    st.caption("Upload a resume PDF and paste the job description to generate a tailored cover letter.")
+
+    uploaded_resume = st.file_uploader(
+        "Upload Resume PDF",
+        type=["pdf"]
+    )
+
+    job_description = st.text_area(
+        "Paste Job Description",
+        height=250,
+        placeholder="Paste the full job description here..."
+    )
+
+    resume_text = ""
+
+    if uploaded_resume is not None:
+        resume_text = extract_text_from_pdf(uploaded_resume)
+        st.success("Resume uploaded successfully.")
+
+        with st.expander("Preview extracted resume text"):
+            st.text_area("Resume Text", resume_text, height=220)
+
+    if st.button("Generate Cover Letter", use_container_width=True):
+        if resume_text.strip() and job_description.strip():
+            with st.spinner("Generating cover letter..."):
+                cover_letter = generate_cover_letter(
+                    resume_text=resume_text,
+                    job_description=job_description
+                )
+
+            st.success("Cover letter generated successfully.")
+            st.text_area("Generated Cover Letter", cover_letter, height=400)
+        else:
+            st.warning("Please upload a resume PDF and paste a job description.")

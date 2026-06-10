@@ -1,22 +1,20 @@
 import pandas as pd
 
-def load_data():
-    candidates = pd.read_csv("database/candidates.csv")
-    jobs = pd.read_csv("database/jobs.csv")
-    return candidates, jobs
-
 def calculate_match_score(candidate_skills, required_skills):
     candidate_skills = set(s.strip().lower() for s in candidate_skills.split(","))
     required_skills = set(s.strip().lower() for s in required_skills.split(","))
 
     matched_skills = candidate_skills.intersection(required_skills)
 
-    score = int((len(matched_skills) / len(required_skills)) * 100)
+    if len(required_skills) == 0:
+        score = 0
+    else:
+        score = int((len(matched_skills) / len(required_skills)) * 100)
+
     return score, list(matched_skills)
 
-def match_candidates(job_id):
-    candidates, jobs = load_data()
 
+def match_candidates(job_id, candidates, jobs):
     job = jobs[jobs["id"] == job_id].iloc[0]
     results = []
 
