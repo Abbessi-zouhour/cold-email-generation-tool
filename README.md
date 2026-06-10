@@ -2,23 +2,43 @@
 
 ## AI-Powered Recruitment Intelligence Platform
 
-TalentBridge is a modern recruitment intelligence platform that combines traditional recruitment workflows with Generative AI to help recruiters, agencies, and career service providers manage candidates, evaluate resumes, communicate with clients, and accelerate hiring decisions.
+TalentBridge is an AI-powered recruitment intelligence platform designed to help recruiters, agencies, and career service providers manage candidates, evaluate resumes, match talent to jobs, and automate professional communication.
 
-The platform integrates AI-powered candidate matching, CV parsing, ATS scoring, cover letter generation, job analysis, and client communication into a single recruitment workspace.
+The platform combines recruitment workflows with Generative AI to accelerate hiring decisions and improve candidate evaluation.
 
 ---
 
-## Key Features
+## Live Demo
+
+Deployable on Streamlit Cloud.
+
+---
+
+## Features
+
+### Recruitment Dashboard
+
+Monitor recruitment activity through a centralized dashboard including:
+
+* Total candidates
+* Open positions
+* Available talent
+* Placed candidates
+* Recruitment pipeline overview
+
+---
 
 ### Candidate Management
 
-Manage and track candidate profiles including:
+Manage candidate profiles including:
 
 * Personal information
-* Technical skills
+* Skills
 * Languages
 * Experience level
 * Recruitment status
+
+---
 
 ### Job Management
 
@@ -29,8 +49,10 @@ Store and manage international job opportunities:
 * Job title
 * Required skills
 * Experience requirements
-* Salary ranges
+* Salary range
 * Language requirements
+
+---
 
 ### Candidate Matching Engine
 
@@ -40,23 +62,26 @@ Automatically rank candidates against job opportunities using:
 * Experience validation
 * Match scoring
 
-Recruiters can instantly identify the most relevant profiles for a specific role.
+The platform identifies the most relevant candidates for a selected role.
 
-### Candidate Recruitment Pipeline
+---
 
-Track candidates through the hiring process:
+### ATS Score Calculator
 
-* Applied
-* Screening
-* Interview Scheduled
-* Client Review
-* Offer Sent
-* Hired
-* Rejected
+Upload a resume PDF and compare it against a target job opportunity.
+
+Outputs include:
+
+* ATS compatibility score
+* Matched skills
+* Missing skills
+* Resume improvement recommendations
+
+---
 
 ### AI CV Parser
 
-Upload a resume in PDF format and automatically extract:
+Upload a PDF resume and automatically extract:
 
 * Name
 * Email
@@ -66,33 +91,9 @@ Upload a resume in PDF format and automatically extract:
 * Languages
 * Experience
 
-### ATS Score Calculator
+Powered by Groq LLM.
 
-Evaluate how well a resume matches a target job description.
-
-The system provides:
-
-* ATS score percentage
-* Matched skills
-* Missing skills
-* Resume improvement recommendations
-
-### AI Email Generator
-
-Generate personalized recruitment emails based on:
-
-* Candidate profile
-* Job opportunity
-* Company information
-* Matching skills
-
-### AI Cover Letter Generator
-
-Generate customized cover letters for candidates based on:
-
-* Job requirements
-* Candidate skills
-* Experience level
+---
 
 ### AI Job Analyzer
 
@@ -100,9 +101,33 @@ Convert unstructured job descriptions into structured information:
 
 * Job title
 * Required skills
-* Experience requirements
+* Required experience
 * Language requirements
 * Salary information
+
+---
+
+### AI Recruitment Email Generator
+
+Generate personalized recruitment emails based on:
+
+* Candidate profile
+* Job opportunity
+* Matching skills
+* Company information
+
+---
+
+### AI Cover Letter Generator
+
+Generate customized cover letters using:
+
+* Uploaded PDF resume
+* Job description
+
+The AI automatically tailors the cover letter to the position while highlighting relevant experience and skills.
+
+---
 
 ### Client Communication Agent
 
@@ -110,47 +135,61 @@ Generate professional client communications including:
 
 * Delay notifications
 * Progress updates
-* Service delivery updates
-* Resume writing project updates
-* Cover letter project updates
+* Service delivery messages
 
 ---
 
-## System Architecture
+### Candidate Pipeline
 
-```text
-┌──────────────────────────────┐
-│      Streamlit Frontend      │
-└───────────────┬──────────────┘
-                │
-                ▼
-┌──────────────────────────────┐
-│            app.py            │
-│      Main Application UI     │
-└───────────────┬──────────────┘
-                │
-    ┌───────────┼───────────┐
-    ▼           ▼           ▼
+Track candidates through recruitment stages:
 
- Matching    AI Services   Client
- Engine                   Communication
+* Applied
+* Screening
+* Interview Scheduled
+* Client Review
+* Offer Sent
+* Hired
+* Rejected
 
-                │
-                ▼
+---
 
-┌──────────────────────────────┐
-│      Groq Llama 3.3 70B      │
-│      (LangChain + Groq)      │
-└──────────────────────────────┘
+## User Dataset Upload
 
-                │
-                ▼
+TalentBridge supports custom datasets.
 
-┌──────────────────────────────┐
-│         CSV Databases        │
-│ Jobs • Candidates • Clients  │
-└──────────────────────────────┘
-```
+Users can upload:
+
+* Candidates CSV
+* Jobs CSV
+* Clients CSV
+
+If no files are uploaded, the application automatically uses demo datasets.
+
+---
+
+## Technology Stack
+
+### Frontend
+
+* Streamlit
+
+### Backend
+
+* Python
+
+### Data Processing
+
+* Pandas
+
+### PDF Processing
+
+* pdfplumber
+
+### AI & LLM
+
+* Groq API
+* Llama 3.3 70B Versatile
+* LangChain
 
 ---
 
@@ -179,61 +218,28 @@ TalentBridge/
 │   ├── job_analyzer.py
 │   └── resume_reader.py
 │
-├── .env
-├── .gitignore
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## Technology Stack
-
-### Frontend
-
-* Streamlit
-
-### Backend
-
-* Python
-
-### Data Processing
-
-* Pandas
-
-### AI & LLM
-
-* LangChain
-* Groq API
-* Llama 3.3 70B Versatile
-
-### PDF Processing
-
-* pdfplumber
-
-### Data Storage
-
-* CSV Databases
-
----
-
 ## Installation
 
-### Clone Repository
+Clone the repository:
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/cold-email_generation-tool.git
-
-cd cold-email_generation-tool
+git clone https://github.com/Abbessi-zouhour/cold-email-generation-tool.git
+cd cold-email-generation-tool
 ```
 
-### Create Virtual Environment
+Create a virtual environment:
 
 ```bash
 python -m venv venv
 ```
 
-### Activate Virtual Environment
+Activate it:
 
 Windows:
 
@@ -247,7 +253,7 @@ Linux/macOS:
 source venv/bin/activate
 ```
 
-### Install Dependencies
+Install dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -260,113 +266,38 @@ pip install -r requirements.txt
 Create a `.env` file:
 
 ```env
-GROQ_API_KEY=your_groq_api_key_here
+GROQ_API_KEY=your_groq_api_key
 ```
 
 ---
 
-## Running the Application
+## Run Locally
 
 ```bash
 streamlit run app.py
 ```
 
-or
-
-```bash
-python -m streamlit run app.py
-```
-
-Application URL:
-
-```text
-http://localhost:8501
-```
-
 ---
 
-## Example Workflow
+## Future Improvements
 
-### Recruitment Workflow
-
-1. Create or review job opportunities.
-2. Match candidates automatically.
-3. Review ATS scores.
-4. Analyze candidate resumes.
-5. Generate personalized outreach emails.
-6. Move candidates through the recruitment pipeline.
-7. Send opportunities to selected candidates.
-
-### Career Services Workflow
-
-1. Upload a client resume.
-2. Analyze ATS compatibility.
-3. Generate a cover letter.
-4. Track project progress.
-5. Generate client updates and delay notifications.
-
----
-
-## Future Roadmap
-
-### Recruitment Intelligence
-
-* AI Recruitment Copilot
-* Semantic Candidate Search
-* Interview Scheduling Agent
-* Candidate Recommendation Agent
-* Automated Job Scraping
-
-### Platform Features
-
-* User Authentication
-* Recruiter Accounts
-* Admin Dashboard
-* PostgreSQL Database
-* Cloud Deployment
-
-### AI Enhancements
-
-* Multi-Agent Architecture
-* Retrieval-Augmented Generation (RAG)
-* Candidate Knowledge Base
-* Automated Talent Insights
-
----
-
-## Screenshots
-
-Create a folder:
-
-```text
-screenshots/
-```
-
-Add screenshots such as:
-
-```text
-dashboard.png
-candidate-matching.png
-ats-score.png
-cv-parser.png
-client-agent.png
-```
-
-Then embed them:
-
-```markdown
-![Dashboard](screenshots/dashboard.png)
-![ATS Score](screenshots/ats-score.png)
-```
+* User authentication
+* PostgreSQL database
+* Semantic candidate search
+* AI recruitment copilot
+* Interview scheduling assistant
+* Resume ranking system
+* Recruiter dashboard
+* Multi-user workspace
 
 ---
 
 ## Author
 
-TalentBridge was developed as an AI-powered recruitment and career services platform demonstrating how Generative AI can enhance recruitment workflows, candidate evaluation, and client communication.
+Developed by Zouhour Abbessi as an AI-powered recruitment intelligence platform demonstrating the integration of Generative AI into recruitment and career services workflows.
 
 ---
 
 ## License
 
-This project is intended for educational, research, and portfolio purposes.
+This project is intended for educational, portfolio, and research purposes.
