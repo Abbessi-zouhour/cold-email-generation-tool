@@ -1,12 +1,25 @@
-# TalentBridge – AI-Powered Recruitment Intelligence Platform
+# TalentBridge
+
+### AI-Powered Recruitment Intelligence Platform
+
+TalentBridge is a recruitment intelligence platform designed to help recruitment agencies, talent acquisition teams, and career service providers streamline candidate sourcing, evaluation, communication, and placement.
+
+The platform combines traditional recruitment workflows with Large Language Models (LLMs) to automate candidate matching, CV analysis, job offer processing, personalized outreach, and client communication.
+
+---
 
 ## Overview
 
-TalentBridge is an AI-powered recruitment platform designed to help recruitment agencies and talent acquisition teams identify the best candidates for international job opportunities.
+Recruiters often spend significant time:
 
-The platform combines traditional recruitment workflows with Large Language Models (LLMs) to automate candidate evaluation, job analysis, CV parsing, and personalized outreach.
+* Reviewing candidate profiles
+* Matching candidates to open positions
+* Writing outreach emails
+* Analyzing job descriptions
+* Parsing resumes and CVs
+* Communicating project updates to clients
 
-Built with Streamlit, LangChain, and Groq's Llama models, TalentBridge provides recruiters with a centralized workspace for managing candidates and accelerating hiring decisions.
+TalentBridge centralizes these activities into a single AI-powered platform.
 
 ---
 
@@ -14,80 +27,118 @@ Built with Streamlit, LangChain, and Groq's Llama models, TalentBridge provides 
 
 ### Candidate Management
 
-* View and manage candidate profiles
-* Track candidate availability and recruitment status
-* Store skills, experience, languages, and contact information
+Manage candidate profiles including:
+
+* Personal information
+* Skills
+* Languages
+* Experience
+* Availability status
 
 ### Job Management
 
-* Browse and manage international job opportunities
-* View required skills, experience, language requirements, and salary ranges
+Track international job opportunities including:
+
+* Company
+* Country
+* Required skills
+* Experience requirements
+* Salary ranges
+* Language requirements
 
 ### AI Candidate Matching
 
-* Automatically match candidates to job offers
-* Skill-based scoring system
-* Experience-based ranking
-* Candidate recommendation engine
+Automatically rank candidates based on:
 
-### AI Email Generation
+* Skill alignment
+* Experience level
+* Job requirements
 
-Generate personalized recruitment emails tailored to:
+Recruiters can instantly identify the most relevant profiles for each opportunity.
 
-* Candidate profile
-* Job opportunity
+### AI Email Generator
+
+Generate personalized recruitment emails using LLMs.
+
+The system automatically includes:
+
+* Candidate name
+* Company name
+* Job title
+* Country
 * Matching skills
-* Company information
 
-### AI Job Offer Analyzer
+### AI Job Analyzer
 
-Extract structured information from unstructured job descriptions:
+Convert unstructured job descriptions into structured data:
 
 * Job title
 * Country
-* Required skills
-* Required experience
+* Skills
+* Experience requirements
 * Language requirements
 * Salary information
 
 ### AI CV Parser
 
-Convert raw CV text into structured candidate profiles:
+Extract structured candidate information from raw CV text:
 
 * Name
 * Email
 * Phone
-* Country
 * Skills
-* Experience
 * Languages
+* Experience
+* Location
+
+### Client Communication Agent
+
+Generate professional client communications including:
+
+* Delay notifications
+* Progress updates
+* Service delivery updates
+* Resume writing updates
+* Cover letter project updates
+
+This feature helps maintain professional communication with clients while reducing manual work.
 
 ---
 
 ## System Architecture
 
 ```text
-┌─────────────────────────┐
-│      Streamlit UI       │
-└────────────┬────────────┘
-             │
-             ▼
-┌─────────────────────────┐
-│      Application        │
-│        app.py           │
-└────────────┬────────────┘
-             │
- ┌───────────┼───────────┐
- ▼           ▼           ▼
-Matching   Email      Analysis
-Engine   Generator    Services
-             │
-             ▼
-      Groq Llama 3.3
-         70B Model
-             │
-             ▼
-       Recruitment AI
+┌────────────────────────────┐
+│      Streamlit Frontend    │
+└─────────────┬──────────────┘
+              │
+              ▼
+┌────────────────────────────┐
+│         app.py             │
+│    Main Application UI     │
+└─────────────┬──────────────┘
+              │
+      ┌───────┼────────┐
+      ▼       ▼        ▼
+
+ Candidate  AI       Client
+ Matching   Services Communication
+
+      │
+      ▼
+
+┌────────────────────────────┐
+│      Groq Llama 3.3        │
+│        70B Model           │
+└────────────────────────────┘
+
+      │
+      ▼
+
+┌────────────────────────────┐
+│        CSV Database        │
+│ Jobs • Candidates • Clients│
+└────────────────────────────┘
 ```
 
 ---
@@ -101,7 +152,8 @@ TalentBridge/
 │
 ├── database/
 │   ├── candidates.csv
-│   └── jobs.csv
+│   ├── jobs.csv
+│   └── clients.csv
 │
 ├── models/
 │   └── llm.py
@@ -110,7 +162,8 @@ TalentBridge/
 │   ├── candidate_matcher.py
 │   ├── email_generator.py
 │   ├── job_analyzer.py
-│   └── cv_parser.py
+│   ├── cv_parser.py
+│   └── client_agent.py
 │
 ├── .env
 ├── .gitignore
@@ -144,14 +197,19 @@ TalentBridge/
 
 * Python Dotenv
 
+### Data Storage
+
+* CSV Databases
+
 ---
 
 ## Installation
 
-### Clone Repository
+### Clone the Repository
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/cold-email_generation-tool.git
+
 cd cold-email_generation-tool
 ```
 
@@ -161,7 +219,7 @@ cd cold-email_generation-tool
 python -m venv venv
 ```
 
-### Activate Environment
+### Activate Virtual Environment
 
 Windows:
 
@@ -169,7 +227,7 @@ Windows:
 venv\Scripts\activate
 ```
 
-Linux / macOS:
+Linux/macOS:
 
 ```bash
 source venv/bin/activate
@@ -188,12 +246,12 @@ pip install -r requirements.txt
 Create a `.env` file:
 
 ```env
-GROQ_API_KEY=your_groq_api_key
+GROQ_API_KEY=your_groq_api_key_here
 ```
 
 ---
 
-## Running the Application
+## Run the Application
 
 ```bash
 streamlit run app.py
@@ -209,35 +267,79 @@ http://localhost:8501
 
 ## Example Workflow
 
-1. Recruiter selects a job offer.
-2. The matching engine ranks candidates.
-3. The recruiter reviews top matches.
-4. AI generates personalized outreach emails.
-5. New CVs can be parsed automatically.
-6. Job descriptions can be analyzed and structured using AI.
+### Recruitment Workflow
+
+1. Open a job opportunity.
+2. Match candidates automatically.
+3. Review ranked profiles.
+4. Generate personalized outreach emails.
+5. Contact candidates.
+
+### Career Services Workflow
+
+1. Add a client.
+2. Track project progress.
+3. Generate delay or update messages.
+4. Deliver resumes and cover letters.
 
 ---
 
-## Future Improvements
+## Future Enhancements
 
-* Resume upload (PDF/DOCX)
-* Semantic candidate matching using embeddings
-* ATS integration
-* Candidate recommendation engine
-* Automated interview scheduling
-* Multi-language recruitment support
-* Recruiter analytics dashboard
-* PostgreSQL database integration
-* Cloud deployment
+### Recruitment
+
+* PDF Resume Upload
+* DOCX Resume Upload
+* Semantic Candidate Matching
+* ATS Integration
+* Interview Scheduling
+
+### AI
+
+* Multi-Agent Architecture
+* RAG-Powered Candidate Search
+* Candidate Recommendation Engine
+* Talent Market Insights
+
+### Data
+
+* PostgreSQL Database
+* User Authentication
+* Recruiter Accounts
+* Client Portal
+
+### Deployment
+
+* Docker Support
+* Cloud Deployment
+* CI/CD Pipeline
+
+---
+
+## Screenshots
+
+Add screenshots inside:
+
+```text
+screenshots/
+```
+
+Example:
+
+```markdown
+![Dashboard](screenshots/dashboard.png)
+![Candidate Matching](screenshots/matching.png)
+![Client Agent](screenshots/client-agent.png)
+```
 
 ---
 
 ## Author
 
-Developed as an AI Recruitment Intelligence Platform project focused on combining recruitment workflows with Generative AI technologies.
+Developed as an AI-powered recruitment and career services platform focused on improving recruiter productivity through Generative AI.
 
 ---
 
 ## License
 
-This project is intended for educational and portfolio purposes.
+This project is available for educational, research, and portfolio purposes.
