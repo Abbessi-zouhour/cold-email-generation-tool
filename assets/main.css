@@ -31,8 +31,8 @@ body {
 }
 
 .block-container {
-    padding-top: 2rem;
-    max-width: 1200px;
+    padding-top: 1rem;
+    max-width: 1400px;
 }
 
 h1, h2, h3 {
@@ -55,18 +55,22 @@ footer {
 }
 
 header {
-    visibility: hidden;
+    visibility: visible;
+    background: transparent;
 }
 
 /* Navbar */
 .navbar {
-    width: 100%;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 14px 0 18px;
-    border-bottom: 0.5px solid var(--border);
-    margin-bottom: 42px;
+
+    width: 100%;
+
+    padding: 15px 0;
+    margin-bottom: 40px;
+
+    border-bottom: 1px solid var(--border);
 }
 
 .logo {
@@ -629,4 +633,138 @@ header {
         flex-direction: column;
     }
 
+}
+
+/* Fixed top Streamlit navigation */
+.top-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 42px;
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--text);
+}
+
+.top-logo-icon {
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: var(--blue);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.logo-box {
+    padding: 12px 0 20px;
+    margin-bottom: 18px;
+    border-bottom: 0.5px solid var(--border);
+}
+
+.logo-main {
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--blue);
+}
+
+.logo-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 4px;
+}
+
+[data-testid="stToolbar"] {
+    display: none;
+}
+div[data-testid="stHorizontalBlock"] {
+    margin-top: 40px;
+}
+/* Sidebar brand */
+section[data-testid="stSidebar"] {
+    background: #F3F6FA;
+}
+
+section[data-testid="stSidebar"] img {
+    max-width: 210px;
+    margin: 20px auto 12px auto;
+    display: block;
+}
+
+.sidebar-subtitle {
+    text-align: center;
+    color: #6B7280;
+    font-size: 13px;
+    margin-bottom: 24px;
+    padding-bottom: 18px;
+    border-bottom: 0.5px solid #E5E7EB;
+}
+
+/* Sidebar navigation */
+section[data-testid="stSidebar"] [role="radiogroup"] {
+    background: white;
+    border: 0.5px solid #E5E7EB;
+    border-radius: 14px;
+    padding: 12px;
+    margin-bottom: 24px;
+}
+
+section[data-testid="stSidebar"] label {
+    padding: 7px 8px;
+    border-radius: 10px;
+}
+
+section[data-testid="stSidebar"] label:hover {
+    background: #EAF3FC;
+}
+
+section[data-testid="stSidebar"] p {
+    font-size: 14px;
+}
+
+section[data-testid="stSidebar"] h3 {
+    font-size: 16px;
+    font-weight: 500;
+    margin-top: 18px;
+}
+
+/* Top logo */
+.top-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.top-brand img {
+    width: 180px;
+    height: auto;
+}
+section[data-testid="stSidebar"] [role="radiogroup"] label {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 10px 14px !important;
+    border-radius: 10px !important;
+    margin-bottom: 4px !important;
+}
+
+section[data-testid="stSidebar"] [role="radiogroup"] label > div:first-child {
+    width: 16px !important;
+    height: 16px !important;
+    border: 1.5px solid #CBD5E1 !important;
+    border-radius: 4px !important;
+}
+
+section[data-testid="stSidebar"] [role="radiogroup"] label:hover {
+    background: #EAF3FC !important;
+}
+
+section[data-testid="stSidebar"] [role="radiogroup"] label[data-checked="true"] {
+    background: #EAF3FC !important;
+    color: #185FA5 !important;
+    font-weight: 500 !important;
 }
