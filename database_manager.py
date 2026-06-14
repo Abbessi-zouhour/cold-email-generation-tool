@@ -65,6 +65,77 @@ def save_clients(df):
     conn.close()
 
 
+def add_candidate(name, email, country, experience_years, skills, status, pipeline_stage):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        INSERT INTO candidates (
+            name,
+            email,
+            country,
+            experience_years,
+            skills,
+            status,
+            pipeline_stage
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        name,
+        email,
+        country,
+        experience_years,
+        skills,
+        status,
+        pipeline_stage
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+def update_candidate(candidate_id, name, email, country, experience_years, skills, status, pipeline_stage):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE candidates
+        SET name = ?,
+            email = ?,
+            country = ?,
+            experience_years = ?,
+            skills = ?,
+            status = ?,
+            pipeline_stage = ?
+        WHERE id = ?
+    """, (
+        name,
+        email,
+        country,
+        experience_years,
+        skills,
+        status,
+        pipeline_stage,
+        candidate_id
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+def delete_candidate(candidate_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        DELETE FROM candidates
+        WHERE id = ?
+    """, (candidate_id,))
+
+    conn.commit()
+    conn.close()
+
+
 if __name__ == "__main__":
     initialize_database()
     print("Database created successfully.")

@@ -309,17 +309,22 @@ header {
 /* Kanban */
 .kanban-board {
     display: flex;
-    gap: 16px;
+    gap: 20px;
     overflow-x: auto;
-    padding-bottom: 12px;
+    width: 100%;
+    padding-bottom: 15px;
+    scrollbar-width: thin;
 }
 
 .kanban-column {
-    min-width: 260px;
-    background: var(--soft-bg);
-    border: 0.5px solid var(--border);
-    border-radius: 12px;
-    padding: 14px;
+    min-width: 320px;
+    width: 320px;
+    flex-shrink: 0;
+
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 16px;
+    padding: 16px;
 }
 
 .kanban-header {
