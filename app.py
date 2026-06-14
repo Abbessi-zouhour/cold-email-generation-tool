@@ -11,7 +11,7 @@ from services.client_agent import generate_client_delay_message, generate_client
 from services.resume_reader import extract_text_from_pdf
 from services.ats_score import calculate_ats_score
 from services.cover_letter_generator import generate_cover_letter
-from services.job_api import fetch_remotive_jobs
+from services.job_api import fetch_online_jobs
 from services.assistant_agent import ask_assistant
 
 from database_manager import (
@@ -89,6 +89,31 @@ uploaded_clients = st.sidebar.file_uploader("Upload clients CSV", type=["csv"])
 
 st.sidebar.markdown("### Search Online Jobs")
 job_search_keyword = st.sidebar.text_input("Search jobs online", value="python developer")
+
+country_options = {
+    "United Kingdom": "gb",
+    "France": "fr",
+    "Canada": "ca",
+    "United States": "us",
+    "Germany": "de",
+    "Netherlands": "nl",
+    "Belgium": "be",
+    "Australia": "au",
+    "Italy": "it",
+    "Spain": "es",
+    "India": "in",
+    "Singapore": "sg",
+    "New Zealand": "nz",
+    "South Africa": "za"
+}
+
+selected_job_country = st.sidebar.selectbox(
+    "Online search country",
+    list(country_options.keys())
+)
+
+job_country = country_options[selected_job_country]
+
 use_online_jobs = st.sidebar.button("Fetch Online Jobs")
 
 
@@ -99,7 +124,10 @@ else:
     candidates = get_candidates()
 
 if use_online_jobs:
-    jobs = fetch_remotive_jobs(job_search_keyword)
+    jobs = fetch_online_jobs(
+        search=job_search_keyword,
+        country=job_country
+    )
 elif uploaded_jobs is not None:
     jobs = pd.read_csv(uploaded_jobs)
 else:
@@ -216,17 +244,111 @@ if menu == "Dashboard":
 elif menu == "Job Offers":
     st.markdown('<div class="section-title">Job Offers</div>', unsafe_allow_html=True)
 
-    country_filter = st.selectbox(
-        "Filter by country",
-        ["All"] + sorted(jobs["country"].unique().tolist())
+    st.caption("Search jobs by title, keyword or profession. Use online search to fetch fresh jobs from Adzuna / fallback APIs.")
+
+    job_country_options = {
+        "United Kingdom": "gb",
+        "France": "fr",
+        "Canada": "ca",
+        "United States": "us",
+        "Germany": "de",
+        "Netherlands": "nl",
+        "Belgium": "be",
+        "Australia": "au",
+        "Italy": "it",
+        "Spain": "es",
+        "India": "in",
+        "Singapore": "sg",
+        "New Zealand": "nz",
+        "South Africa": "za"
+    }
+
+    search_job = st.text_input(
+        "Search jobs online",
+        value=job_search_keyword if use_online_jobs else "",
+        placeholder="Example: English teacher, Python developer, Data analyst..."
     )
 
-    filtered_jobs = jobs.copy()
+    selected_country_name = st.selectbox(
+        "Online search country",
+        list(job_country_options.keys()),
+        index=list(job_country_options.keys()).index(selected_job_country)
+        if selected_job_country in job_country_options else 0
+    )
 
-    if country_filter != "All":
-        filtered_jobs = filtered_jobs[filtered_jobs["country"] == country_filter]
+    selected_country_code = job_country_options[selected_country_name]
 
-    st.dataframe(filtered_jobs, use_container_width=True, hide_index=True)
+    col_search, col_reset = st.columns([1, 1])
+
+    with col_search:
+        search_online_clicked = st.button("Search Online Jobs", use_container_width=True)
+
+    with col_reset:
+        show_local_clicked = st.button("Show Local SQLite Jobs", use_container_width=True)
+
+    if search_online_clicked and search_job.strip():
+        with st.spinner("Fetching online job offers..."):
+            filtered_jobs = fetch_online_jobs(
+                search=search_job,
+                country=selected_country_code
+            )
+
+        if filtered_jobs.empty:
+            st.warning("No online jobs found for this search. Try another keyword or country.")
+    elif use_online_jobs:
+        filtered_jobs = jobs.copy()
+    elif show_local_clicked or not search_job.strip():
+        filtered_jobs = jobs.copy()
+    else:
+        search_text = search_job.lower()
+
+        filtered_jobs = jobs[
+            jobs["job_title"].astype(str).str.lower().str.contains(search_text, na=False)
+            |
+            jobs["required_skills"].astype(str).str.lower().str.contains(search_text, na=False)
+            |
+            jobs["company"].astype(str).str.lower().str.contains(search_text, na=False)
+        ]
+
+    if "job_link" not in filtered_jobs.columns:
+        filtered_jobs["job_link"] = ""
+
+    st.markdown(f"**{len(filtered_jobs)} job offer(s) found**")
+
+    display_columns = [
+        col for col in [
+            "id",
+            "company",
+            "country",
+            "job_title",
+            "required_skills",
+            "experience_required",
+            "language_required",
+            "salary_range",
+            "status",
+            "job_link"
+        ]
+        if col in filtered_jobs.columns
+    ]
+
+    st.dataframe(
+        filtered_jobs[display_columns],
+        width="stretch",
+        hide_index=True
+    )
+
+    if not filtered_jobs.empty and "job_link" in filtered_jobs.columns:
+        st.markdown("### Apply links")
+
+        for _, row in filtered_jobs.head(20).iterrows():
+            job_title = row.get("job_title", "Job offer")
+            company = row.get("company", "Company")
+            link = row.get("job_link", "")
+
+            if isinstance(link, str) and link.strip():
+                st.markdown(f"- [{job_title} — {company}]({link})")
+            else:
+                st.markdown(f"- {job_title} — {company} *(no link available)*")
 
 
 elif menu == "Candidates":
@@ -258,6 +380,7 @@ elif menu == "Candidates":
                 "Pipeline stage",
                 ["Applied", "Screening", "Interview Scheduled", "Client Review", "Offer Sent", "Hired", "Rejected"]
             )
+
             submitted = st.form_submit_button("Save candidate")
 
             if submitted:
@@ -368,15 +491,6 @@ elif menu == "Candidates":
             use_container_width=True,
             hide_index=True
         )
-
-elif menu == "Candidate Pipeline":
-    st.markdown(
-        '<div class="section-eyebrow">PIPELINE</div>'
-        '<h2 class="section-title">Candidate pipeline</h2>'
-        '<p class="section-subtitle">Track candidates across the recruitment process.</p>',
-        unsafe_allow_html=True
-    )
-
     stages = [
         "Applied",
         "Screening",
@@ -491,34 +605,80 @@ elif menu == "ATS Score":
         else:
             st.warning("Please upload a resume PDF first.")
 
-
 elif menu == "Candidate Matching":
     st.markdown('<div class="section-title">Candidate Matching</div>', unsafe_allow_html=True)
 
-    job_options = jobs["company"] + " - " + jobs["job_title"]
-    selected_job = st.selectbox("Select Job Offer", job_options)
+    search_job_match = st.text_input(
+        "Search job by name or title",
+        placeholder="Example: Software Engineer, Python Developer, Teacher..."
+    )
 
-    job_index = job_options[job_options == selected_job].index[0]
-    job_id = int(jobs.loc[job_index, "id"])
+    search_matching_online = st.button("Search online job offers for matching")
 
-    job, matches = match_candidates(job_id, candidates, jobs)
+    if search_matching_online and search_job_match.strip():
+        jobs_for_matching = fetch_online_jobs(
+            search=search_job_match,
+            country=job_country
+        )
+    else:
+        jobs_for_matching = jobs.copy()
 
-    st.markdown(f"""
-    <div class="card">
-        <h3>{job['company']} - {job['job_title']}</h3>
-        <p><b>Country:</b> {job['country']}</p>
-        <p><b>Required Skills:</b> {job['required_skills']}</p>
-        <p><b>Experience Required:</b> {job['experience_required']} years</p>
-        <p><b>Language Required:</b> {job['language_required']}</p>
-        <p><b>Salary Range:</b> {job['salary_range']}</p>
-    </div>
-    """, unsafe_allow_html=True)
+        if search_job_match.strip():
+            search_text = search_job_match.lower()
 
-    st.markdown("### Ranked Candidates")
-    st.dataframe(matches, use_container_width=True, hide_index=True)
+            jobs_for_matching = jobs_for_matching[
+                jobs_for_matching["job_title"].astype(str).str.lower().str.contains(search_text, na=False)
+                |
+                jobs_for_matching["company"].astype(str).str.lower().str.contains(search_text, na=False)
+                |
+                jobs_for_matching["required_skills"].astype(str).str.lower().str.contains(search_text, na=False)
+            ]
 
-    chart_data = matches[["candidate_name", "match_score"]].set_index("candidate_name")
-    st.bar_chart(chart_data)
+    if jobs_for_matching.empty:
+        st.warning("No job offers found. Try another keyword or use online search.")
+    else:
+        job_options = (
+            jobs_for_matching["company"].astype(str)
+            + " - "
+            + jobs_for_matching["job_title"].astype(str)
+            + " — ID "
+            + jobs_for_matching["id"].astype(str)
+        )
+
+        selected_job = st.selectbox("Select Job Offer", job_options)
+
+        selected_job_id = int(float(selected_job.split("ID ")[1]))
+
+        job = jobs_for_matching[
+            jobs_for_matching["id"].astype(float).astype(int) == selected_job_id
+        ].iloc[0]
+
+        job, matches = match_candidates(
+            selected_job_id,
+            candidates,
+            jobs_for_matching
+        )
+
+        st.markdown(f"""
+        <div class="card">
+            <h3>{job['company']} - {job['job_title']}</h3>
+            <p><b>Country:</b> {job['country']}</p>
+            <p><b>Required Skills:</b> {job['required_skills']}</p>
+            <p><b>Experience Required:</b> {job['experience_required']} years</p>
+            <p><b>Language Required:</b> {job['language_required']}</p>
+            <p><b>Salary Range:</b> {job['salary_range']}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### Ranked Candidates")
+
+        if matches.empty:
+            st.warning("No matching candidates found.")
+        else:
+            st.dataframe(matches, width="stretch", hide_index=True)
+
+            chart_data = matches[["candidate_name", "match_score"]].set_index("candidate_name")
+            st.bar_chart(chart_data)
 
 
 elif menu == "Email Generator":
