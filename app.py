@@ -14,7 +14,10 @@ from services.cover_letter_generator import generate_cover_letter
 from services.job_api import fetch_online_jobs
 from services.assistant_agent import ask_assistant
 from services.recommendation_engine import recommend_candidates
-
+from services.interview_questions import generate_interview_questions
+from services.interview_email import generate_interview_invitation_email
+from services.email_sender import send_email
+from services.interview_scorecard import evaluate_candidate
 from database_manager import (
     get_candidates,
     get_jobs,
@@ -62,6 +65,8 @@ menu_options = [
     "Candidate Matching",
     "Candidate Pipeline",
     "Interview Scheduler",
+    "AI Interview Questions",
+    "Interview Scorecard",
     "Email Generator",
     "Job Analyzer",
     "CV Parser",
@@ -501,8 +506,161 @@ elif menu == "Candidate Pipeline":
     pipeline_html += '</div>'
 
     st.markdown(pipeline_html, unsafe_allow_html=True)
-    
+elif menu == "Interview Scheduler":
+    st.markdown('<div class="section-title">Interview Scheduler</div>', unsafe_allow_html=True)
 
+    tab_schedule, tab_records = st.tabs([
+        "Schedule Interview",
+        "Interview Records"
+    ])
+
+    with tab_schedule:
+        st.subheader("Schedule new interview")
+
+        valid_candidates = candidates.dropna(subset=["id", "name"])
+
+        if valid_candidates.empty:
+            st.warning("No candidates available.")
+        else:
+            candidate_options = (
+                valid_candidates["name"].astype(str)
+                + " — ID "
+                + valid_candidates["id"].astype(str)
+            )
+
+            selected_candidate = st.selectbox(
+                "Select candidate",
+                candidate_options
+            )
+
+            candidate_id = int(float(selected_candidate.split("ID ")[1]))
+
+            candidate_row = valid_candidates[
+                valid_candidates["id"].astype(float).astype(int) == candidate_id
+            ].iloc[0]
+
+            job_title = st.text_input("Job title")
+            company = st.text_input("Company")
+            interview_date = st.date_input("Interview date")
+            interview_time = st.time_input("Interview time")
+
+            interview_type = st.selectbox(
+                "Interview type",
+                ["Online", "Phone", "On-site", "Technical", "HR"]
+            )
+
+            notes = st.text_area("Notes")
+
+            if st.button("Save interview", width="stretch"):
+                if job_title.strip() and company.strip():
+                    add_interview(
+                        candidate_id=candidate_id,
+                        candidate_name=str(candidate_row.get("name", "")),
+                        candidate_email=str(candidate_row.get("email", "")),
+                        job_title=job_title,
+                        company=company,
+                        interview_date=interview_date,
+                        interview_time=interview_time,
+                        interview_type=interview_type,
+                        notes=notes
+                    )
+
+                    st.success("Interview scheduled successfully.")
+                    st.rerun()
+                else:
+                    st.warning("Job title and company are required.")
+
+    with tab_records:
+        st.subheader("Scheduled interviews")
+
+        interviews = get_interviews()
+
+        if interviews.empty:
+            st.info("No interviews scheduled yet.")
+        else:
+            st.dataframe(
+                interviews,
+                width="stretch",
+                hide_index=True
+            )
+
+            interview_options = (
+                interviews["candidate_name"].astype(str)
+                + " - "
+                + interviews["job_title"].astype(str)
+                + " — ID "
+                + interviews["id"].astype(str)
+            )
+
+            selected_interview = st.selectbox(
+                "Select interview to delete",
+                interview_options
+            )
+
+            interview_id = int(float(selected_interview.split("ID ")[1]))
+
+            confirm = st.checkbox("I confirm delete this interview")
+
+            if st.button("Delete interview"):
+                if confirm:
+                    delete_interview(interview_id)
+                    st.success("Interview deleted successfully.")
+                    st.rerun()
+                else:
+                    st.warning("Please confirm first.")
+
+            st.markdown("### Generate Interview Invitation Email")
+
+            selected_email_interview = st.selectbox(
+                "Select interview for email",
+                interview_options,
+                key="interview_email_select"
+            )
+
+            email_interview_id = int(float(selected_email_interview.split("ID ")[1]))
+
+            email_interview_row = interviews[
+                interviews["id"].astype(float).astype(int) == email_interview_id
+            ].iloc[0]
+
+            if "generated_interview_email" not in st.session_state:
+                st.session_state.generated_interview_email = ""
+
+            if st.button("Generate invitation email", width="stretch"):
+                email_text = generate_interview_invitation_email(
+                    candidate_name=str(email_interview_row.get("candidate_name", "")),
+                    candidate_email=str(email_interview_row.get("candidate_email", "")),
+                    job_title=str(email_interview_row.get("job_title", "")),
+                    company=str(email_interview_row.get("company", "")),
+                    interview_date=str(email_interview_row.get("interview_date", "")),
+                    interview_time=str(email_interview_row.get("interview_time", "")),
+                    interview_type=str(email_interview_row.get("interview_type", "")),
+                    notes=str(email_interview_row.get("notes", ""))
+                )
+
+                st.session_state.generated_interview_email = email_text
+                st.success("Interview invitation email generated.")
+
+            if st.session_state.generated_interview_email:
+                email_text = st.text_area(
+                    "Generated Email",
+                    st.session_state.generated_interview_email,
+                    height=320
+                )
+
+                subject = f"Interview Invitation - {email_interview_row.get('job_title', '')}"
+
+                if st.button("Send email to candidate", width="stretch"):
+                    success, message = send_email(
+                        to_email=str(email_interview_row.get("candidate_email", "")),
+                        subject=subject,
+                        body=email_text
+                    )
+
+                    if success:
+                        st.success(message)
+                    else:
+                        st.error(message)
 elif menu == "ATS Score":
     st.markdown('<div class="section-title">ATS Score Calculator</div>', unsafe_allow_html=True)
 
@@ -695,108 +853,122 @@ elif menu == "Candidate Matching":
             chart_data = matches[["candidate_name", "match_score"]].set_index("candidate_name")
             st.bar_chart(chart_data)
 
-elif menu == "Interview Scheduler":
-    st.markdown('<div class="section-title">Interview Scheduler</div>', unsafe_allow_html=True)
+elif menu == "AI Interview Questions":
 
-    tab_schedule, tab_records = st.tabs([
-        "Schedule Interview",
-        "Interview Records"
-    ])
+    st.markdown(
+        '<div class="section-title">AI Interview Kit Generator</div>',
+        unsafe_allow_html=True
+    )
 
-    with tab_schedule:
-        st.subheader("Schedule new interview")
+    st.caption(
+        "Upload a resume and generate interview questions, expected answers, evaluation criteria and difficulty levels using AI."
+    )
 
-        valid_candidates = candidates.dropna(subset=["id", "name"])
+    uploaded_resume = st.file_uploader(
+        "Upload candidate resume PDF",
+        type=["pdf"],
+        key="interview_resume_upload"
+    )
 
-        if valid_candidates.empty:
-            st.warning("No candidates available.")
+    resume_text = ""
+
+    if uploaded_resume is not None:
+        resume_text = extract_text_from_pdf(uploaded_resume)
+        st.success("Resume uploaded and extracted successfully.")
+
+        with st.expander("Preview extracted resume text"):
+            st.text_area(
+                "Resume text",
+                resume_text,
+                height=220
+            )
+
+    job_title = st.text_input(
+        "Job Title",
+        placeholder="Python Developer"
+    )
+
+    skills = st.text_area(
+        "Required Skills",
+        placeholder="Python, FastAPI, Docker, AWS"
+    )
+
+    job_description = st.text_area(
+        "Job Description",
+        placeholder="Paste the job description here...",
+        height=180
+    )
+
+    if st.button(
+        "Generate Interview Kit",
+        width="stretch"
+    ):
+
+        if not resume_text.strip():
+            st.warning("Please upload a resume PDF first.")
+        elif not job_title.strip():
+            st.warning("Please enter a job title.")
+        elif not skills.strip():
+            st.warning("Please enter required skills.")
         else:
-            candidate_options = (
-                valid_candidates["name"].astype(str)
-                + " — ID "
-                + valid_candidates["id"].astype(str)
-            )
+            with st.spinner("Generating interview kit with Groq AI..."):
 
-            selected_candidate = st.selectbox(
-                "Select candidate",
-                candidate_options
-            )
+                interview_kit = generate_interview_questions(
+                    resume_text=resume_text,
+                    job_title=job_title,
+                    skills=skills,
+                    job_description=job_description
+                )
 
-            candidate_id = int(float(selected_candidate.split("ID ")[1]))
+            st.success("Interview kit generated successfully.")
 
-            candidate_row = valid_candidates[
-                valid_candidates["id"].astype(float).astype(int) == candidate_id
-            ].iloc[0]
+            st.text_area(
+                "Generated Interview Kit",
+                interview_kit,
+                height=650
+            )                                           
+elif menu == "Interview Scorecard":
 
-            job_title = st.text_input("Job title")
-            company = st.text_input("Company")
-            interview_date = st.date_input("Interview date")
-            interview_time = st.time_input("Interview time")
+    st.markdown(
+        '<div class="section-title">Interview Scorecard</div>',
+        unsafe_allow_html=True
+    )
 
-            interview_type = st.selectbox(
-                "Interview type",
-                ["Online", "Phone", "On-site", "Technical", "HR"]
-            )
+    job_title = st.text_input("Job Title")
 
-            notes = st.text_area("Notes")
+    questions = st.text_area(
+        "Interview Questions",
+        height=250
+    )
 
-            if st.button("Save interview", width="stretch"):
-                if job_title.strip() and company.strip():
-                    add_interview(
-                        candidate_id=candidate_id,
-                        candidate_name=str(candidate_row.get("name", "")),
-                        candidate_email=str(candidate_row.get("email", "")),
-                        job_title=job_title,
-                        company=company,
-                        interview_date=interview_date,
-                        interview_time=interview_time,
-                        interview_type=interview_type,
-                        notes=notes
-                    )
+    answers = st.text_area(
+        "Candidate Answers",
+        height=350
+    )
 
-                    st.success("Interview scheduled successfully.")
-                    st.rerun()
-                else:
-                    st.warning("Job title and company are required.")
+    if st.button(
+        "Evaluate Candidate",
+        width="stretch"
+    ):
+        if questions.strip() and answers.strip():
 
-    with tab_records:
-        st.subheader("Scheduled interviews")
+            with st.spinner("Evaluating candidate..."):
 
-        interviews = get_interviews()
+                result = evaluate_candidate(
+                    job_title,
+                    questions,
+                    answers
+                )
 
-        if interviews.empty:
-            st.info("No interviews scheduled yet.")
+            st.success("Evaluation completed")
+
+            st.markdown(result)
+
         else:
-            st.dataframe(
-                interviews,
-                width="stretch",
-                hide_index=True
+            st.warning(
+                "Please provide questions and answers."
             )
-
-            interview_options = (
-                interviews["candidate_name"].astype(str)
-                + " - "
-                + interviews["job_title"].astype(str)
-                + " — ID "
-                + interviews["id"].astype(str)
-            )
-
-            selected_interview = st.selectbox(
-                "Select interview to delete",
-                interview_options
-            )
-
-            interview_id = int(float(selected_interview.split("ID ")[1]))
-
-            confirm = st.checkbox("I confirm delete this interview")
-
-            if st.button("Delete interview"):
-                if confirm:
-                    delete_interview(interview_id)
-                    st.success("Interview deleted successfully.")
-                    st.rerun()
-                else:
-                    st.warning("Please confirm first.")
+            
 elif menu == "Email Generator":
     st.markdown('<div class="section-title">Personalized Email Generator</div>', unsafe_allow_html=True)
     st.caption("Upload a resume PDF, search an online job offer, then generate a personalized application email.")
@@ -898,13 +1070,15 @@ elif menu == "Email Generator":
             email_jobs["id"].astype(float).astype(int) == selected_email_job_id
         ].iloc[0]
 
+        job_link = str(selected_job_row.get("job_link", ""))
+
         st.markdown(f"""
         <div class="card">
             <h3>{selected_job_row.get('company', '')} - {selected_job_row.get('job_title', '')}</h3>
             <p><b>Country / Location:</b> {selected_job_row.get('country', '')}</p>
             <p><b>Required skills / keyword:</b> {selected_job_row.get('required_skills', '')}</p>
             <p><b>Salary range:</b> {selected_job_row.get('salary_range', 'Not specified')}</p>
-            <p><b>Job link:</b> {selected_job_row.get('job_link', '')}</p>
+            <p><b>Job link:</b> {job_link}</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -934,26 +1108,21 @@ elif menu == "Email Generator":
 
                 with st.spinner("Generating personalized email..."):
                     email = generate_email(
-                        candidate_name="Candidate from uploaded resume",
-                        job_title=selected_job_row["job_title"],
-                        company=selected_job_row["company"],
-                        country=selected_job_row["country"],
-                        matched_skills=selected_job_row["required_skills"]
+                        candidate_name=candidate_name_email,
+                        job_title=str(selected_job_row.get("job_title", "")),
+                        company=str(selected_job_row.get("company", "")),
+                        country=str(selected_job_row.get("country", "")),
+                        matched_skills=", ".join(matched_skills)
                     )
 
-                    email += f"""
-
-                    Job offer link: {selected_job_row.get("job_link", "")}
-                    """
-
-                if isinstance(job_link, str) and job_link.strip():
+                if job_link.strip():
                     email = f"{email}\n\nJob offer link: {job_link}"
 
                 st.success("Email generated successfully.")
                 st.text_area("Generated Email", email, height=360)
     else:
         st.info("Search for an online job offer to select it here.")
-
+        
 elif menu == "Job Analyzer":
     st.markdown('<div class="section-title">Job Offer Analyzer</div>', unsafe_allow_html=True)
 
