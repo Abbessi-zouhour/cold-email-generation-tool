@@ -5,6 +5,9 @@ def generate_email(candidate_name, job_title, company, country, matched_skills):
 
     prompt = f"""
     Write a professional recruitment agency email.
+    Use the candidate name from the resume if available.
+    Do not write [Your Name], [Agency Name], or [Contact Information].
+    End the email with the candidate's real name if found, otherwise use "Best regards".
 
     Candidate: {candidate_name}
     Job title: {job_title}

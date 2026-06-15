@@ -134,7 +134,41 @@ def delete_candidate(candidate_id):
 
     conn.commit()
     conn.close()
+def add_client(name, service, deadline, status):
+    conn = get_connection()
+    cursor = conn.cursor()
 
+    cursor.execute("""
+        INSERT INTO clients (name, service, deadline, status)
+        VALUES (?, ?, ?, ?)
+    """, (name, service, deadline, status))
+
+    conn.commit()
+    conn.close()
+
+
+def update_client(client_id, name, service, deadline, status):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        UPDATE clients
+        SET name = ?, service = ?, deadline = ?, status = ?
+        WHERE id = ?
+    """, (name, service, deadline, status, client_id))
+
+    conn.commit()
+    conn.close()
+
+
+def delete_client(client_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM clients WHERE id = ?", (client_id,))
+
+    conn.commit()
+    conn.close()
 
 if __name__ == "__main__":
     initialize_database()

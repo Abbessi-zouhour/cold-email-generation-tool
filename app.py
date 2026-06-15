@@ -20,7 +20,10 @@ from database_manager import (
     get_clients,
     add_candidate,
     update_candidate,
-    delete_candidate
+    delete_candidate,
+    add_client,
+    update_client,
+    delete_client
 )
 
 
@@ -491,6 +494,14 @@ elif menu == "Candidates":
             use_container_width=True,
             hide_index=True
         )
+elif menu == "Candidate Pipeline":
+    st.markdown(
+        '<div class="section-eyebrow">PIPELINE</div>'
+        '<h2 class="section-title">Candidate pipeline</h2>'
+        '<p class="section-subtitle">Track candidates across the recruitment process.</p>',
+        unsafe_allow_html=True
+    )
+
     stages = [
         "Applied",
         "Screening",
@@ -504,7 +515,9 @@ elif menu == "Candidates":
     pipeline_html = '<div class="kanban-board">'
 
     for stage in stages:
-        stage_candidates = candidates[candidates["pipeline_stage"] == stage]
+        stage_candidates = candidates[
+            candidates["pipeline_stage"].astype(str) == stage
+        ]
 
         pipeline_html += (
             '<div class="kanban-column">'
@@ -518,25 +531,14 @@ elif menu == "Candidates":
             pipeline_html += '<p class="candidate-meta">No candidates</p>'
         else:
             for _, candidate in stage_candidates.iterrows():
-                skills = str(candidate["skills"])
-                main_skill = skills.split(",")[0].strip()
-
-                skill_class = "tag-python"
-
-                if "react" in main_skill.lower():
-                    skill_class = "tag-react"
-                elif "devops" in main_skill.lower() or "docker" in main_skill.lower():
-                    skill_class = "tag-devops"
-                elif "data" in main_skill.lower() or "sql" in main_skill.lower():
-                    skill_class = "tag-data"
-                elif "ml" in main_skill.lower() or "machine" in main_skill.lower():
-                    skill_class = "tag-ml"
+                skills = str(candidate.get("skills", ""))
+                main_skill = skills.split(",")[0].strip() if skills else "Skill"
 
                 pipeline_html += (
                     '<div class="candidate-card">'
-                    f'<div class="candidate-name">{candidate["name"]}</div>'
-                    f'<div class="candidate-meta">{candidate["experience_years"]} years • {candidate["country"]}</div>'
-                    f'<span class="tag {skill_class}">{main_skill}</span>'
+                    f'<div class="candidate-name">{candidate.get("name", "")}</div>'
+                    f'<div class="candidate-meta">{candidate.get("experience_years", 0)} years • {candidate.get("country", "")}</div>'
+                    f'<span class="tag tag-python">{main_skill}</span>'
                     '</div>'
                 )
 
@@ -545,65 +547,124 @@ elif menu == "Candidates":
     pipeline_html += '</div>'
 
     st.markdown(pipeline_html, unsafe_allow_html=True)
+    
 
 elif menu == "ATS Score":
     st.markdown('<div class="section-title">ATS Score Calculator</div>', unsafe_allow_html=True)
 
-    st.caption("Upload a resume PDF and compare it against a selected job offer.")
+    st.caption("Search online jobs, select a target offer, upload a resume PDF, and calculate ATS compatibility.")
 
-    job_options = jobs["company"] + " - " + jobs["job_title"]
-    selected_job = st.selectbox("Select Target Job", job_options)
+    ats_job_search = st.text_input(
+        "Search online job",
+        placeholder="Example: Python developer, English teacher, Data analyst..."
+    )
 
-    job_index = job_options[job_options == selected_job].index[0]
-    job = jobs.loc[job_index]
+    ats_country_options = {
+        "United Kingdom": "gb",
+        "France": "fr",
+        "Canada": "ca",
+        "United States": "us",
+        "Germany": "de",
+        "Netherlands": "nl",
+        "Belgium": "be",
+        "Australia": "au",
+        "Italy": "it",
+        "Spain": "es",
+        "India": "in",
+        "Singapore": "sg",
+        "New Zealand": "nz",
+        "South Africa": "za"
+    }
 
-    st.markdown(f"""
-    <div class="card">
-        <h3>{job['company']} - {job['job_title']}</h3>
-        <p><b>Country:</b> {job['country']}</p>
-        <p><b>Required Skills:</b> {job['required_skills']}</p>
-        <p><b>Experience Required:</b> {job['experience_required']} years</p>
-    </div>
-    """, unsafe_allow_html=True)
+    ats_selected_country = st.selectbox(
+        "Online job country",
+        list(ats_country_options.keys()),
+        key="ats_country"
+    )
 
-    uploaded_file = st.file_uploader("Upload Resume PDF", type=["pdf"])
+    ats_country_code = ats_country_options[ats_selected_country]
 
-    cv_text = ""
-
-    if uploaded_file is not None:
-        cv_text = extract_text_from_pdf(uploaded_file)
-        st.success("Resume uploaded successfully.")
-
-        with st.expander("Preview extracted resume text"):
-            st.text_area("Extracted Resume Text", cv_text, height=220)
-
-    if st.button("Calculate ATS Score", use_container_width=True):
-        if cv_text.strip():
-            result = calculate_ats_score(
-                cv_text=cv_text,
-                job_skills=job["required_skills"]
-            )
-
-            st.metric("ATS Score", f"{result['score']}%")
-            st.progress(result["score"] / 100)
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.success("Matched Skills")
-                for skill in result["matched_skills"]:
-                    st.write(f"✅ {skill}")
-
-            with col2:
-                st.warning("Missing Skills")
-                for skill in result["missing_skills"]:
-                    st.write(f" {skill}")
-
-            st.info("Improvement Suggestions")
-            for recommendation in result["recommendations"]:
-                st.write(f"• {recommendation}")
+    if st.button("Search online jobs for ATS", use_container_width=True):
+        if ats_job_search.strip():
+            with st.spinner("Fetching online jobs..."):
+                st.session_state.ats_online_jobs = fetch_online_jobs(
+                    search=ats_job_search,
+                    country=ats_country_code
+                )
         else:
-            st.warning("Please upload a resume PDF first.")
+            st.warning("Please enter a job title or keyword.")
+
+    ats_jobs = st.session_state.get("ats_online_jobs", jobs.copy())
+
+    if ats_jobs.empty:
+        st.warning("No job offers available. Search online or add jobs to SQLite.")
+    else:
+        job_options = (
+            ats_jobs["company"].astype(str)
+            + " - "
+            + ats_jobs["job_title"].astype(str)
+            + " — ID "
+            + ats_jobs["id"].astype(str)
+        )
+
+        selected_job = st.selectbox("Select target job", job_options)
+
+        selected_job_id = int(float(selected_job.split("ID ")[1]))
+
+        job = ats_jobs[
+            ats_jobs["id"].astype(float).astype(int) == selected_job_id
+        ].iloc[0]
+
+        st.markdown(f"""
+        <div class="card">
+            <h3>{job['company']} - {job['job_title']}</h3>
+            <p><b>Country:</b> {job['country']}</p>
+            <p><b>Required Skills:</b> {job['required_skills']}</p>
+            <p><b>Experience Required:</b> {job['experience_required']} years</p>
+            <p><b>Language Required:</b> {job.get('language_required', 'Not specified')}</p>
+            <p><b>Salary Range:</b> {job.get('salary_range', 'Not specified')}</p>
+            <p><b>Job Link:</b> {job.get('job_link', '')}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        uploaded_file = st.file_uploader("Upload resume PDF", type=["pdf"])
+
+        cv_text = ""
+
+        if uploaded_file is not None:
+            cv_text = extract_text_from_pdf(uploaded_file)
+            st.success("Resume uploaded successfully.")
+
+            with st.expander("Preview extracted resume text"):
+                st.text_area("Extracted Resume Text", cv_text, height=220)
+
+        if st.button("Calculate ATS Score", use_container_width=True):
+            if cv_text.strip():
+                result = calculate_ats_score(
+                    cv_text=cv_text,
+                    job_skills=job["required_skills"]
+                )
+
+                st.metric("ATS Score", f"{result['score']}%")
+                st.progress(result["score"] / 100)
+
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.success("Matched Skills")
+                    for skill in result["matched_skills"]:
+                        st.write(f"{skill}")
+
+                with col2:
+                    st.warning("Missing Skills")
+                    for skill in result["missing_skills"]:
+                        st.write(f"• {skill}")
+
+                st.info("Improvement Suggestions")
+                for recommendation in result["recommendations"]:
+                    st.write(f"• {recommendation}")
+            else:
+                st.warning("Please upload a resume PDF first.")
 
 elif menu == "Candidate Matching":
     st.markdown('<div class="section-title">Candidate Matching</div>', unsafe_allow_html=True)
@@ -683,34 +744,160 @@ elif menu == "Candidate Matching":
 
 elif menu == "Email Generator":
     st.markdown('<div class="section-title">Personalized Email Generator</div>', unsafe_allow_html=True)
+    st.caption("Upload a resume PDF, search an online job offer, then generate a personalized application email.")
 
-    job_options = jobs["company"] + " - " + jobs["job_title"]
-    selected_job = st.selectbox("Select Job", job_options)
+    if "email_jobs" not in st.session_state:
+        st.session_state.email_jobs = pd.DataFrame()
 
-    job_index = job_options[job_options == selected_job].index[0]
-    job_id = int(jobs.loc[job_index, "id"])
+    email_resume = st.file_uploader(
+        "Upload resume PDF",
+        type=["pdf"],
+        key="email_resume_upload"
+    )
 
-    job, matches = match_candidates(job_id, candidates, jobs)
+    resume_text_for_email = ""
 
-    if matches.empty:
-        st.warning("No candidates found for this job.")
-    else:
-        candidate_name = st.selectbox("Select Candidate", matches["candidate_name"])
-        candidate = matches[matches["candidate_name"] == candidate_name].iloc[0]
+    if email_resume is not None:
+        resume_text_for_email = extract_text_from_pdf(email_resume)
+        st.success("Resume uploaded and extracted successfully.")
 
-        if st.button("Generate Email", use_container_width=True):
-            with st.spinner("Generating email..."):
-                email = generate_email(
-                    candidate_name=candidate["candidate_name"],
-                    job_title=job["job_title"],
-                    company=job["company"],
-                    country=job["country"],
-                    matched_skills=candidate["matched_skills"]
+        with st.expander("Preview extracted resume text"):
+            st.text_area(
+                "Resume text",
+                resume_text_for_email,
+                height=220
+            )
+
+    candidate_name_email = st.text_input(
+        "Candidate name",
+        placeholder="Example: Amira Ben Ali"
+    )
+
+    email_job_search = st.text_input(
+        "Search online job",
+        placeholder="Example: English teacher, Python developer, Data analyst..."
+    )
+
+    email_country_options = {
+        "United Kingdom": "gb",
+        "France": "fr",
+        "Canada": "ca",
+        "United States": "us",
+        "Germany": "de",
+        "Netherlands": "nl",
+        "Belgium": "be",
+        "Australia": "au",
+        "Italy": "it",
+        "Spain": "es",
+        "India": "in",
+        "Singapore": "sg",
+        "New Zealand": "nz",
+        "South Africa": "za"
+    }
+
+    email_country_name = st.selectbox(
+        "Online job country",
+        list(email_country_options.keys()),
+        key="email_job_country"
+    )
+
+    email_country_code = email_country_options[email_country_name]
+
+    if st.button("Search online jobs", width="stretch"):
+        if email_job_search.strip():
+            with st.spinner("Searching online jobs..."):
+                st.session_state.email_jobs = fetch_online_jobs(
+                    search=email_job_search,
+                    country=email_country_code
                 )
 
-            st.success("Email generated successfully.")
-            st.text_area("Generated Email", email, height=300)
+            if st.session_state.email_jobs.empty:
+                st.warning("No online jobs found. Try another keyword or country.")
+            else:
+                st.success(f"{len(st.session_state.email_jobs)} job offer(s) found.")
+        else:
+            st.warning("Please enter a job keyword first.")
 
+    email_jobs = st.session_state.email_jobs.copy()
+
+    if not email_jobs.empty:
+        if "job_link" not in email_jobs.columns:
+            email_jobs["job_link"] = ""
+
+        job_options = (
+            email_jobs["company"].astype(str)
+            + " - "
+            + email_jobs["job_title"].astype(str)
+            + " — ID "
+            + email_jobs["id"].astype(str)
+        )
+
+        selected_email_job = st.selectbox(
+            "Select online job offer",
+            job_options
+        )
+
+        selected_email_job_id = int(float(selected_email_job.split("ID ")[1]))
+
+        selected_job_row = email_jobs[
+            email_jobs["id"].astype(float).astype(int) == selected_email_job_id
+        ].iloc[0]
+
+        st.markdown(f"""
+        <div class="card">
+            <h3>{selected_job_row.get('company', '')} - {selected_job_row.get('job_title', '')}</h3>
+            <p><b>Country / Location:</b> {selected_job_row.get('country', '')}</p>
+            <p><b>Required skills / keyword:</b> {selected_job_row.get('required_skills', '')}</p>
+            <p><b>Salary range:</b> {selected_job_row.get('salary_range', 'Not specified')}</p>
+            <p><b>Job link:</b> {selected_job_row.get('job_link', '')}</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("Generate email", width="stretch"):
+            if not resume_text_for_email.strip():
+                st.warning("Please upload a resume PDF first.")
+            elif not candidate_name_email.strip():
+                st.warning("Please enter the candidate name.")
+            else:
+                required_skills_text = str(selected_job_row.get("required_skills", ""))
+                resume_lower = resume_text_for_email.lower()
+
+                skill_candidates = [
+                    skill.strip()
+                    for skill in required_skills_text.replace(";", ",").split(",")
+                    if skill.strip()
+                ]
+
+                matched_skills = [
+                    skill
+                    for skill in skill_candidates
+                    if skill.lower() in resume_lower
+                ]
+
+                if not matched_skills:
+                    matched_skills = [required_skills_text] if required_skills_text else ["relevant experience"]
+
+                with st.spinner("Generating personalized email..."):
+                    email = generate_email(
+                        candidate_name="Candidate from uploaded resume",
+                        job_title=selected_job_row["job_title"],
+                        company=selected_job_row["company"],
+                        country=selected_job_row["country"],
+                        matched_skills=selected_job_row["required_skills"]
+                    )
+
+                    email += f"""
+
+                    Job offer link: {selected_job_row.get("job_link", "")}
+                    """
+
+                if isinstance(job_link, str) and job_link.strip():
+                    email = f"{email}\n\nJob offer link: {job_link}"
+
+                st.success("Email generated successfully.")
+                st.text_area("Generated Email", email, height=360)
+    else:
+        st.info("Search for an online job offer to select it here.")
 
 elif menu == "Job Analyzer":
     st.markdown('<div class="section-title">Job Offer Analyzer</div>', unsafe_allow_html=True)
@@ -724,6 +911,62 @@ elif menu == "Job Analyzer":
 
             st.success("Analysis completed.")
             st.markdown(result)
+
+            st.markdown("### Suggested candidates from database")
+
+            job_text = job_description.lower()
+
+            suggestions = []
+
+            for _, candidate in candidates.iterrows():
+                candidate_skills = str(candidate.get("skills", "")).lower()
+                skill_list = [
+                    skill.strip()
+                    for skill in candidate_skills.replace(";", ",").split(",")
+                    if skill.strip()
+                ]
+
+                matched_skills = [
+                    skill for skill in skill_list
+                    if skill in job_text
+                ]
+
+                if skill_list:
+                    match_score = int((len(matched_skills) / len(skill_list)) * 100)
+                else:
+                    match_score = 0
+
+                if matched_skills:
+                    suggestions.append({
+                        "candidate_name": candidate.get("name", ""),
+                        "email": candidate.get("email", ""),
+                        "country": candidate.get("country", ""),
+                        "experience_years": candidate.get("experience_years", 0),
+                        "skills": candidate.get("skills", ""),
+                        "matched_skills": ", ".join(matched_skills),
+                        "match_score": match_score
+                    })
+
+            if suggestions:
+                suggestions_df = pd.DataFrame(suggestions)
+                suggestions_df = suggestions_df.sort_values(
+                    by="match_score",
+                    ascending=False
+                )
+
+                st.dataframe(
+                    suggestions_df,
+                    width="stretch",
+                    hide_index=True
+                )
+
+                chart_data = suggestions_df[
+                    ["candidate_name", "match_score"]
+                ].set_index("candidate_name")
+
+                st.bar_chart(chart_data)
+            else:
+                st.warning("No matching candidates found in the database.")
         else:
             st.warning("Please paste a job offer first.")
 
@@ -783,70 +1026,176 @@ elif menu == "Cover Letter Generator":
 elif menu == "Client Communication Agent":
     st.markdown('<div class="section-title">Client Communication Agent</div>', unsafe_allow_html=True)
 
-    tab1, tab2, tab3 = st.tabs(["Delay Message", "Progress Update", "Client Records"])
+    clients = get_clients()
+
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "Delay Message",
+        "Progress Update",
+        "Client Records",
+        "Manage Clients"
+    ])
 
     with tab1:
         st.subheader("Delay Message Generator")
 
-        client_options = clients["name"] + " - " + clients["service"]
-        selected_client = st.selectbox("Select Client", client_options)
+        if clients.empty:
+            st.warning("No clients found. Add a client from Manage Clients first.")
+        else:
+            client_options = clients["name"].astype(str) + " - " + clients["service"].astype(str)
+            selected_client = st.selectbox("Select Client", client_options)
 
-        client_index = client_options[client_options == selected_client].index[0]
-        client = clients.loc[client_index]
+            client_index = client_options[client_options == selected_client].index[0]
+            client = clients.loc[client_index]
 
-        client_name = st.text_input("Client Name", value=client["name"])
-        service_type = st.text_input("Service Type", value=client["service"])
-        original_deadline = st.text_input("Original Deadline", value=client["deadline"])
-        delay_reason = st.text_input("Delay Reason", value="Additional quality review")
-        new_delivery_date = st.date_input("New Delivery Date")
-        tone = st.selectbox("Tone", ["Professional", "Friendly", "Apologetic", "Formal", "Reassuring"])
+            client_name = st.text_input("Client Name", value=str(client["name"]))
+            service_type = st.text_input("Service Type", value=str(client["service"]))
+            original_deadline = st.text_input("Original Deadline", value=str(client["deadline"]))
+            delay_reason = st.text_input("Delay Reason", value="Additional quality review")
+            new_delivery_date = st.date_input("New Delivery Date")
+            tone = st.selectbox("Tone", ["Professional", "Friendly", "Apologetic", "Formal", "Reassuring"])
 
-        if st.button("Generate Delay Message", use_container_width=True):
-            message = generate_client_delay_message(
-                client_name=client_name,
-                service_type=service_type,
-                delay_reason=delay_reason,
-                original_deadline=original_deadline,
-                new_delivery_date=new_delivery_date,
-                tone=tone
-            )
+            if st.button("Generate Delay Message", width="stretch"):
+                message = generate_client_delay_message(
+                    client_name=client_name,
+                    service_type=service_type,
+                    delay_reason=delay_reason,
+                    original_deadline=original_deadline,
+                    new_delivery_date=new_delivery_date,
+                    tone=tone
+                )
 
-            st.text_area("Generated Message", message, height=320)
+                st.text_area("Generated Message", message, height=320)
 
     with tab2:
         st.subheader("Progress Update Generator")
 
-        client_options_update = clients["name"] + " - " + clients["service"]
-        selected_client_update = st.selectbox("Select Client for Update", client_options_update)
+        if clients.empty:
+            st.warning("No clients found. Add a client from Manage Clients first.")
+        else:
+            client_options_update = clients["name"].astype(str) + " - " + clients["service"].astype(str)
+            selected_client_update = st.selectbox("Select Client for Update", client_options_update)
 
-        client_index_update = client_options_update[client_options_update == selected_client_update].index[0]
-        client_update = clients.loc[client_index_update]
+            client_index_update = client_options_update[client_options_update == selected_client_update].index[0]
+            client_update = clients.loc[client_index_update]
 
-        progress_client_name = st.text_input("Client Name", value=client_update["name"], key="progress_name")
-        progress_service_type = st.text_input("Service Type", value=client_update["service"], key="progress_service")
-        current_status = st.selectbox("Current Status", ["Pending", "In Progress", "Under Review", "Delayed", "Completed"])
-        next_step = st.text_input("Next Step")
-        progress_tone = st.selectbox("Tone", ["Professional", "Friendly", "Formal", "Reassuring"], key="progress_tone")
+            progress_client_name = st.text_input("Client Name", value=str(client_update["name"]), key="progress_name")
+            progress_service_type = st.text_input("Service Type", value=str(client_update["service"]), key="progress_service")
 
-        if st.button("Generate Progress Update", use_container_width=True):
-            if next_step.strip():
-                message = generate_client_progress_update(
-                    client_name=progress_client_name,
-                    service_type=progress_service_type,
-                    current_status=current_status,
-                    next_step=next_step,
-                    tone=progress_tone
-                )
+            current_status = st.selectbox(
+                "Current Status",
+                ["Pending", "In Progress", "Under Review", "Delayed", "Completed"]
+            )
 
-                st.text_area("Generated Update", message, height=320)
-            else:
-                st.warning("Please enter the next step.")
+            next_step = st.text_input("Next Step")
+            progress_tone = st.selectbox(
+                "Tone",
+                ["Professional", "Friendly", "Formal", "Reassuring"],
+                key="progress_tone"
+            )
+
+            if st.button("Generate Progress Update", width="stretch"):
+                if next_step.strip():
+                    message = generate_client_progress_update(
+                        client_name=progress_client_name,
+                        service_type=progress_service_type,
+                        current_status=current_status,
+                        next_step=next_step,
+                        tone=progress_tone
+                    )
+
+                    st.text_area("Generated Update", message, height=320)
+                else:
+                    st.warning("Please enter the next step.")
 
     with tab3:
         st.subheader("Client Records")
-        st.dataframe(clients, use_container_width=True, hide_index=True)
 
+        clients = get_clients()
 
+        st.dataframe(
+            clients,
+            width="stretch",
+            hide_index=True
+        )
+
+    with tab4:
+        st.subheader("Manage clients")
+
+        clients = get_clients()
+
+        action = st.selectbox(
+            "Action",
+            ["Add client", "Edit client", "Delete client"]
+        )
+
+        if action == "Add client":
+            name = st.text_input("Client name")
+            service = st.text_input("Service")
+            deadline = st.date_input("Deadline")
+            status = st.selectbox("Status", ["Pending", "In Progress", "Delayed", "Completed"])
+
+            if st.button("Save client"):
+                if name.strip() and service.strip():
+                    add_client(name, service, str(deadline), status)
+                    st.success("Client added successfully.")
+                    st.rerun()
+                else:
+                    st.warning("Client name and service are required.")
+
+        elif action == "Edit client":
+            if clients.empty:
+                st.warning("No clients available to edit.")
+            else:
+                candidate_options = candidates["name"].astype(str) + " — ID " + candidates["id"].astype(str)
+
+                selected_candidate_client = st.selectbox(
+                    "Select candidate",
+                    candidate_options
+                )
+
+                candidate_id = int(float(selected_candidate_client.split("ID ")[1]))
+
+                candidate_client = candidates[
+                    candidates["id"].astype(float).astype(int) == candidate_id
+                ].iloc[0]
+
+                client_name = st.text_input("Client Name", value=str(candidate_client["name"]))
+                service_type = st.text_input("Service Type", value="Recruitment / Job application support")
+                original_deadline = st.text_input("Original Deadline", value="")
+
+                status_options = ["Pending", "In Progress", "Delayed", "Completed"]
+
+                edit_status = st.selectbox(
+                    "Status",
+                    status_options,
+                    index=status_options.index(client_row["status"])
+                    if str(client_row["status"]) in status_options else 0
+                )
+
+                if st.button("Update client"):
+                    update_client(client_id, edit_name, edit_service, edit_deadline, edit_status)
+                    st.success("Client updated successfully.")
+                    st.rerun()
+
+        elif action == "Delete client":
+            if clients.empty:
+                st.warning("No clients available to delete.")
+            else:
+                client_options = clients["name"].astype(str) + " — ID " + clients["id"].astype(str)
+                selected_client = st.selectbox("Select client to delete", client_options)
+
+                client_id = int(float(selected_client.split("ID ")[1]))
+
+                confirm = st.checkbox("I confirm delete")
+
+                if st.button("Delete client"):
+                    if confirm:
+                        delete_client(client_id)
+                        st.success("Client deleted successfully.")
+                        st.rerun()
+                    else:
+                        st.warning("Please confirm first.")
+    
 elif menu == "AI Assistant":
     st.markdown('<div class="section-title">AI Assistant</div>', unsafe_allow_html=True)
 
