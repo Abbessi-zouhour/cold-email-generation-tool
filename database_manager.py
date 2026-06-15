@@ -169,6 +169,15 @@ def delete_client(client_id):
 
     conn.commit()
     conn.close()
+def get_candidate_by_id(candidate_id):
+    conn = get_connection()
+    df = pd.read_sql(
+        "SELECT * FROM candidates WHERE id = ?",
+        conn,
+        params=(candidate_id,)
+    )
+    conn.close()
+    return df
 
 if __name__ == "__main__":
     initialize_database()

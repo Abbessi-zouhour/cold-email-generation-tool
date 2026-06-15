@@ -13,11 +13,13 @@ from services.ats_score import calculate_ats_score
 from services.cover_letter_generator import generate_cover_letter
 from services.job_api import fetch_online_jobs
 from services.assistant_agent import ask_assistant
+from services.recommendation_engine import recommend_candidates
 
 from database_manager import (
     get_candidates,
     get_jobs,
     get_clients,
+    get_candidate_by_id,
     add_candidate,
     update_candidate,
     delete_candidate,
@@ -25,7 +27,11 @@ from database_manager import (
     update_client,
     delete_client
 )
-
+from services.interview_scheduler import (
+    add_interview,
+    get_interviews,
+    delete_interview
+)
 
 BASE_DIR = Path(__file__).parent
 LOGO_PATH = BASE_DIR / "assets" / "images" / "logo.png"
@@ -52,8 +58,10 @@ menu_options = [
     "Dashboard",
     "Job Offers",
     "Candidates",
+    "Candidate Profile",
     "Candidate Matching",
     "Candidate Pipeline",
+    "Interview Scheduler",
     "Email Generator",
     "Job Analyzer",
     "CV Parser",
@@ -333,10 +341,10 @@ elif menu == "Job Offers":
     col_search, col_reset = st.columns([1, 1])
 
     with col_search:
-        search_online_clicked = st.button("Search Online Jobs", use_container_width=True)
+        search_online_clicked = st.button("Search Online Jobs", width="stretch")
 
     with col_reset:
-        show_local_clicked = st.button("Show Local SQLite Jobs", use_container_width=True)
+        show_local_clicked = st.button("Show Local SQLite Jobs", width="stretch")
 
     if search_online_clicked and search_job.strip():
         with st.spinner("Fetching online job offers..."):
@@ -347,10 +355,13 @@ elif menu == "Job Offers":
 
         if filtered_jobs.empty:
             st.warning("No online jobs found for this search. Try another keyword or country.")
+
     elif use_online_jobs:
         filtered_jobs = jobs.copy()
+
     elif show_local_clicked or not search_job.strip():
         filtered_jobs = jobs.copy()
+
     else:
         search_text = search_job.lower()
 
@@ -389,6 +400,42 @@ elif menu == "Job Offers":
         hide_index=True
     )
 
+    if not filtered_jobs.empty:
+        st.markdown("### Automatic Candidate Recommendations")
+
+        job_options = (
+            filtered_jobs["company"].astype(str)
+            + " - "
+            + filtered_jobs["job_title"].astype(str)
+            + " — ID "
+            + filtered_jobs["id"].astype(str)
+        )
+
+        selected_recommendation_job = st.selectbox(
+            "Select job to recommend candidates",
+            job_options
+        )
+
+        selected_recommendation_id = selected_recommendation_job.split("ID ")[1]
+
+        selected_job_row = filtered_jobs[
+            filtered_jobs["id"].astype(str) == selected_recommendation_id
+        ].iloc[0]
+
+        recommendations_df = recommend_candidates(
+            selected_job_row,
+            candidates
+        )
+
+        if not recommendations_df.empty:
+            st.dataframe(
+                recommendations_df,
+                width="stretch",
+                hide_index=True
+            )
+        else:
+            st.info("No matching candidates found for this job.")
+
     if not filtered_jobs.empty and "job_link" in filtered_jobs.columns:
         st.markdown("### Apply links")
 
@@ -401,148 +448,6 @@ elif menu == "Job Offers":
                 st.markdown(f"- [{job_title} — {company}]({link})")
             else:
                 st.markdown(f"- {job_title} — {company} *(no link available)*")
-
-
-elif menu == "Candidates":
-    st.markdown('<div class="section-title">Candidates</div>', unsafe_allow_html=True)
-
-    tab_add, tab_edit, tab_delete, tab_view = st.tabs([
-        "Add candidate",
-        "Edit candidate",
-        "Delete candidate",
-        "View candidates"
-    ])
-
-    with tab_add:
-        st.subheader("Add new candidate")
-
-        with st.form("add_candidate_form"):
-            name = st.text_input("Name")
-            email = st.text_input("Email")
-            country = st.text_input("Country")
-            experience_years = st.number_input("Experience years", min_value=0, max_value=50, value=0)
-            skills = st.text_area("Skills")
-
-            status = st.selectbox(
-                "Status",
-                ["Available", "Placed", "In Process", "Interviewing"]
-            )
-
-            pipeline_stage = st.selectbox(
-                "Pipeline stage",
-                ["Applied", "Screening", "Interview Scheduled", "Client Review", "Offer Sent", "Hired", "Rejected"]
-            )
-
-            submitted = st.form_submit_button("Save candidate")
-
-            if submitted:
-                if name.strip() and email.strip():
-                    add_candidate(name, email, country, experience_years, skills, status, pipeline_stage)
-                    st.success("Candidate saved successfully.")
-                    st.rerun()
-                else:
-                    st.warning("Name and email are required.")
-
-    with tab_edit:
-        st.subheader("Edit candidate")
-
-        candidate_options = candidates["name"] + " — ID " + candidates["id"].astype(str)
-
-        selected_candidate = st.selectbox(
-            "Select candidate to edit",
-            candidate_options
-        )
-
-        selected_id = int(float(selected_candidate.split("ID ")[1]))
-        candidate_row = candidates[candidates["id"] == selected_id].iloc[0]
-
-        with st.form("edit_candidate_form"):
-            edit_name = st.text_input("Name", value=candidate_row["name"])
-            edit_email = st.text_input("Email", value=candidate_row["email"])
-            edit_country = st.text_input("Country", value=candidate_row["country"])
-
-            edit_experience = st.number_input(
-                "Experience years",
-                min_value=0,
-                max_value=50,
-                value=int(candidate_row["experience_years"])
-            )
-
-            edit_skills = st.text_area("Skills", value=candidate_row["skills"])
-
-            edit_status = st.selectbox(
-                "Status",
-                ["Available", "Placed", "In Process", "Interviewing"],
-                index=["Available", "Placed", "In Process", "Interviewing"].index(candidate_row["status"])
-                if candidate_row["status"] in ["Available", "Placed", "In Process", "Interviewing"] else 0
-            )
-
-            edit_pipeline_stage = st.selectbox(
-                "Pipeline stage",
-                ["Applied", "Screening", "Interview Scheduled", "Client Review", "Offer Sent", "Hired", "Rejected"],
-                index=["Applied", "Screening", "Interview Scheduled", "Client Review", "Offer Sent", "Hired", "Rejected"].index(candidate_row["pipeline_stage"])
-                if candidate_row["pipeline_stage"] in ["Applied", "Screening", "Interview Scheduled", "Client Review", "Offer Sent", "Hired", "Rejected"] else 0
-            )
-
-            update_submitted = st.form_submit_button("Update candidate")
-
-            if update_submitted:
-                update_candidate(
-                    selected_id,
-                    edit_name,
-                    edit_email,
-                    edit_country,
-                    edit_experience,
-                    edit_skills,
-                    edit_status,
-                    edit_pipeline_stage
-                )
-
-                st.success("Candidate updated successfully.")
-                st.rerun()
-
-    with tab_delete:
-        st.subheader("Delete candidate")
-
-        delete_options = candidates["name"] + " — ID " + candidates["id"].astype(str)
-
-        selected_delete = st.selectbox(
-            "Select candidate to delete",
-            delete_options
-        )
-
-        delete_id = int(float(selected_delete.split("ID ")[1]))
-
-        confirm_delete = st.checkbox("I confirm I want to delete this candidate")
-
-        if st.button("Delete candidate"):
-            if confirm_delete:
-                delete_candidate(delete_id)
-                st.success("Candidate deleted successfully.")
-                st.rerun()
-            else:
-                st.warning("Please confirm before deleting.")
-
-    with tab_view:
-        st.subheader("Candidate database")
-
-        status_filter = st.selectbox(
-            "Filter by status",
-            ["All"] + sorted(candidates["status"].unique().tolist())
-        )
-
-        filtered_candidates = candidates.copy()
-
-        if status_filter != "All":
-            filtered_candidates = filtered_candidates[
-                filtered_candidates["status"] == status_filter
-            ]
-
-        st.dataframe(
-            filtered_candidates,
-            use_container_width=True,
-            hide_index=True
-        )
 elif menu == "Candidate Pipeline":
     st.markdown(
         '<div class="section-eyebrow">PIPELINE</div>'
@@ -790,7 +695,108 @@ elif menu == "Candidate Matching":
             chart_data = matches[["candidate_name", "match_score"]].set_index("candidate_name")
             st.bar_chart(chart_data)
 
+elif menu == "Interview Scheduler":
+    st.markdown('<div class="section-title">Interview Scheduler</div>', unsafe_allow_html=True)
 
+    tab_schedule, tab_records = st.tabs([
+        "Schedule Interview",
+        "Interview Records"
+    ])
+
+    with tab_schedule:
+        st.subheader("Schedule new interview")
+
+        valid_candidates = candidates.dropna(subset=["id", "name"])
+
+        if valid_candidates.empty:
+            st.warning("No candidates available.")
+        else:
+            candidate_options = (
+                valid_candidates["name"].astype(str)
+                + " — ID "
+                + valid_candidates["id"].astype(str)
+            )
+
+            selected_candidate = st.selectbox(
+                "Select candidate",
+                candidate_options
+            )
+
+            candidate_id = int(float(selected_candidate.split("ID ")[1]))
+
+            candidate_row = valid_candidates[
+                valid_candidates["id"].astype(float).astype(int) == candidate_id
+            ].iloc[0]
+
+            job_title = st.text_input("Job title")
+            company = st.text_input("Company")
+            interview_date = st.date_input("Interview date")
+            interview_time = st.time_input("Interview time")
+
+            interview_type = st.selectbox(
+                "Interview type",
+                ["Online", "Phone", "On-site", "Technical", "HR"]
+            )
+
+            notes = st.text_area("Notes")
+
+            if st.button("Save interview", width="stretch"):
+                if job_title.strip() and company.strip():
+                    add_interview(
+                        candidate_id=candidate_id,
+                        candidate_name=str(candidate_row.get("name", "")),
+                        candidate_email=str(candidate_row.get("email", "")),
+                        job_title=job_title,
+                        company=company,
+                        interview_date=interview_date,
+                        interview_time=interview_time,
+                        interview_type=interview_type,
+                        notes=notes
+                    )
+
+                    st.success("Interview scheduled successfully.")
+                    st.rerun()
+                else:
+                    st.warning("Job title and company are required.")
+
+    with tab_records:
+        st.subheader("Scheduled interviews")
+
+        interviews = get_interviews()
+
+        if interviews.empty:
+            st.info("No interviews scheduled yet.")
+        else:
+            st.dataframe(
+                interviews,
+                width="stretch",
+                hide_index=True
+            )
+
+            interview_options = (
+                interviews["candidate_name"].astype(str)
+                + " - "
+                + interviews["job_title"].astype(str)
+                + " — ID "
+                + interviews["id"].astype(str)
+            )
+
+            selected_interview = st.selectbox(
+                "Select interview to delete",
+                interview_options
+            )
+
+            interview_id = int(float(selected_interview.split("ID ")[1]))
+
+            confirm = st.checkbox("I confirm delete this interview")
+
+            if st.button("Delete interview"):
+                if confirm:
+                    delete_interview(interview_id)
+                    st.success("Interview deleted successfully.")
+                    st.rerun()
+                else:
+                    st.warning("Please confirm first.")
 elif menu == "Email Generator":
     st.markdown('<div class="section-title">Personalized Email Generator</div>', unsafe_allow_html=True)
     st.caption("Upload a resume PDF, search an online job offer, then generate a personalized application email.")
