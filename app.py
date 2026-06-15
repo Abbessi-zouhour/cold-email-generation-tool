@@ -179,69 +179,120 @@ with nav_col:
 menu = st.session_state.page
 st.divider()
 
-
 if menu == "Dashboard":
-    total_candidates = len(candidates)
-    open_jobs = len(jobs[jobs["status"] == "Open"])
-    available_candidates = len(candidates[candidates["status"] == "Available"])
-    placed_candidates = len(candidates[candidates["status"] == "Placed"])
+    candidates = get_candidates()
+    jobs = get_jobs()
+    clients = get_clients()
 
-    st.markdown(f"""
+    total_candidates = len(candidates)
+    total_jobs = len(jobs)
+    total_clients = len(clients)
+
+    available_candidates = len(candidates[candidates["status"].astype(str) == "Available"])
+    placed_candidates = len(candidates[candidates["status"].astype(str) == "Placed"])
+
+    open_jobs = len(jobs[jobs["status"].astype(str) == "Open"]) if "status" in jobs.columns else total_jobs
+
+    pipeline_counts = candidates["pipeline_stage"].astype(str).value_counts()
+    status_counts = candidates["status"].astype(str).value_counts()
+
+    st.markdown("""
     <h1 class="hero-title">AI-powered <span>recruitment intelligence</span> platform</h1>
     <p class="hero-subtitle">
-        Manage candidates, analyze resumes, calculate ATS scores, match jobs,
-        and get AI-powered recruitment insights in one platform.
+        Live recruitment dashboard powered by SQLite, online job search, AI analysis and candidate intelligence.
     </p>
+    """, unsafe_allow_html=True)
 
+    st.markdown(f"""
     <div class="stats-grid">
         <div class="stat"><h2>{total_candidates}</h2><p>Total candidates</p></div>
+        <div class="stat"><h2>{total_jobs}</h2><p>Total job offers</p></div>
+        <div class="stat"><h2>{total_clients}</h2><p>Total clients</p></div>
         <div class="stat"><h2>{open_jobs}</h2><p>Open positions</p></div>
-        <div class="stat"><h2>{available_candidates}</h2><p>Available talent</p></div>
-        <div class="stat"><h2>{placed_candidates}</h2><p>Placed candidates</p></div>
-    </div>
-
-    <div class="section">
-        <div class="section-eyebrow">FEATURES</div>
-        <h2 class="section-title">Everything recruiters need</h2>
-        <p class="section-subtitle">
-            AI-powered recruitment workflows for candidates, jobs, resumes and client communication.
-        </p>
     </div>
     """, unsafe_allow_html=True)
 
-    left, right = st.columns([2, 1])
+    st.markdown("### Recruitment overview")
 
-    with left:
-        st.markdown("### Latest Job Opportunities")
-        st.dataframe(
-            jobs[["company", "country", "job_title", "experience_required", "salary_range", "status"]],
-            use_container_width=True,
-            hide_index=True
-        )
+    col1, col2 = st.columns(2)
 
-    with right:
-        st.markdown("### Talent Status")
-        status_counts = candidates["status"].value_counts()
+    with col1:
+        st.markdown("#### Candidates by status")
+        if not status_counts.empty:
+            st.bar_chart(status_counts)
+        else:
+            st.info("No candidate status data available.")
 
-        for status, count in status_counts.items():
-            st.markdown(f"""
-            <div class="card">
-                <div style="color:#6b7280;">{status}</div>
-                <div style="font-size:30px; font-weight:600;">{count}</div>
-            </div>
-            """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("#### Candidates by pipeline stage")
+        if not pipeline_counts.empty:
+            st.bar_chart(pipeline_counts)
+        else:
+            st.info("No pipeline data available.")
 
-    st.markdown("### Top Candidate Profiles")
+    st.markdown("### Quick insights")
 
-    for _, candidate in candidates.head(5).iterrows():
+    insight_col1, insight_col2, insight_col3 = st.columns(3)
+
+    with insight_col1:
         st.markdown(f"""
-        <div class="card" style="margin-bottom:12px;">
-            <h3>{candidate['name']}</h3>
-            <p>{candidate['country']} • {candidate['experience_years']} years experience</p>
-            <p><b>Skills:</b> {candidate['skills']}</p>
-            <span class="tag tag-matched">{candidate['status']}</span>
+        <div class="card">
+            <h3>Available talent</h3>
+            <p>{available_candidates} candidates are currently available for new opportunities.</p>
         </div>
         """, unsafe_allow_html=True)
+
+    with insight_col2:
+        st.markdown(f"""
+        <div class="card">
+            <h3>Placed candidates</h3>
+            <p>{placed_candidates} candidates have already been placed or hired.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with insight_col3:
+        top_stage = pipeline_counts.index[0] if not pipeline_counts.empty else "No data"
+        top_stage_count = pipeline_counts.iloc[0] if not pipeline_counts.empty else 0
+
+        st.markdown(f"""
+        <div class="card">
+            <h3>Most active stage</h3>
+            <p>{top_stage} has the highest number of candidates: {top_stage_count}.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    st.markdown("### Latest candidates")
+
+    latest_candidates = candidates.tail(5).copy()
+
+    st.dataframe(
+        latest_candidates,
+        width="stretch",
+        hide_index=True
+    )
+
+    st.markdown("### Latest job opportunities")
+
+    latest_jobs = jobs.tail(5).copy()
+
+    display_job_cols = [
+        col for col in [
+            "company",
+            "country",
+            "job_title",
+            "required_skills",
+            "salary_range",
+            "status",
+            "job_link"
+        ]
+        if col in latest_jobs.columns
+    ]
+
+    st.dataframe(
+        latest_jobs[display_job_cols],
+        width="stretch",
+        hide_index=True
+    )
 
 
 elif menu == "Job Offers":
