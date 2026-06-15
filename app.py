@@ -293,8 +293,6 @@ if menu == "Dashboard":
         width="stretch",
         hide_index=True
     )
-
-
 elif menu == "Job Offers":
     st.markdown('<div class="section-title">Job Offers</div>', unsafe_allow_html=True)
 
