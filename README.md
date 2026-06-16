@@ -1,138 +1,70 @@
-# TalentBridge — AI-Powered Recruitment Intelligence Platform
+# TalentBridge
 
-TalentBridge is an AI-powered recruitment intelligence platform designed to help recruiters, HR teams, agencies and career consultants manage candidates, analyze resumes, match profiles with job offers, calculate ATS scores and generate personalized recruitment communication.
+## AI-Powered Recruitment Intelligence Platform
 
-## Features
+TalentBridge is a modern AI-powered recruitment intelligence platform designed for recruiters, staffing agencies, HR teams, and career consultants.
 
-* Dynamic candidate management with SQLite
-* Add, edit and delete candidates
-* Candidate pipeline with recruitment stages
-* Candidate matching based on job requirements
-* Online job search using Adzuna, JSearch and Remotive APIs
-* ATS score calculator using uploaded resumes and job offers
-* Resume PDF parsing
-* Job offer analyzer with candidate suggestions from the database
-* Personalized email generator
-* Cover letter generator
-* Client communication agent
-* Dynamic dashboard with recruitment KPIs
-* AI assistant for recruitment insights
+The platform combines recruitment management, candidate sourcing, ATS optimization, AI-powered candidate evaluation, interview management, and recruitment analytics into a single SaaS-style application.
 
-## Tech Stack
+---
 
-### Frontend
+# Features
 
-* Streamlit
+## Recruitment Dashboard
 
-### Backend
+Real-time recruitment analytics dashboard with:
 
-* Python
-* Pandas
-* SQLite
+* Total candidates
+* Total jobs
+* Total clients
+* Scheduled interviews
+* Hiring rate
+* Open positions
+* Available candidates
+* Pipeline distribution
+* Candidate country distribution
+* Job market analytics
 
-### AI & LLM
+---
 
-* LangChain
-* Groq API
-* Llama 3.3 70B Versatile
+## Candidate Management
 
-### Document Processing
+Manage candidate profiles stored in SQLite.
 
-* PDFPlumber
+Features:
 
-### Job APIs
+* Personal information
+* Contact details
+* Skills
+* Languages
+* Experience
+* Candidate status
+* Pipeline stage
 
-* Adzuna API
-* JSearch API via RapidAPI
-* Remotive API
+---
 
-## Project Structure
+## Candidate Matching Engine
 
-```text
-TalentBridge/
-│
-├── app.py
-├── database_manager.py
-├── requirements.txt
-├── README.md
-├── .env
-│
-├── assets/
-│   ├── main.css
-│   └── images/
-│
-├── database/
-│   ├── talentbridge.db
-│   ├── candidates.csv
-│   ├── jobs.csv
-│   └── clients.csv
-│
-├── services/
-│   ├── assistant_agent.py
-│   ├── ats_score.py
-│   ├── candidate_matcher.py
-│   ├── client_agent.py
-│   ├── cover_letter_generator.py
-│   ├── cv_parser.py
-│   ├── email_generator.py
-│   ├── job_analyzer.py
-│   ├── job_api.py
-│   └── resume_reader.py
-```
+Automatically match candidates against jobs using:
 
-## Environment Variables
+* Skills matching
+* Experience matching
+* Country matching
+* Match scoring
 
-Create a `.env` file in the project root:
+Outputs:
 
-```env
-ADZUNA_APP_ID=your_adzuna_app_id
-ADZUNA_APP_KEY=your_adzuna_app_key
-RAPIDAPI_KEY=your_rapidapi_key
-GROQ_API_KEY=your_groq_api_key
-```
+* Match percentage
+* Best candidates ranking
+* Recommended candidates
 
-Do not push `.env` to GitHub.
+---
 
-## Installation
+## Candidate Pipeline
 
-```bash
-git clone https://github.com/Abbessi-zouhour/cold-email-generation-tool.git
-cd cold-email-generation-tool
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-streamlit run app.py
-```
+Dynamic ATS pipeline management.
 
-## Database
-
-The application uses SQLite through:
-
-```text
-database/talentbridge.db
-```
-
-The database stores:
-
-* Candidates
-* Jobs
-* Clients
-
-The CSV files are used as seed data and backup references.
-
-## Main Modules
-
-### Dashboard
-
-Displays live recruitment KPIs, candidate status, pipeline stages, latest candidates and latest job opportunities.
-
-### Candidates
-
-Allows recruiters to add, edit, delete and view candidates from SQLite.
-
-### Candidate Pipeline
-
-Displays candidates by recruitment stage:
+Stages:
 
 * Applied
 * Screening
@@ -142,40 +74,400 @@ Displays candidates by recruitment stage:
 * Hired
 * Rejected
 
-### Job Offers
+Features:
 
-Searches job offers from multiple online APIs and displays direct application links.
+* Move candidates between stages
+* Real-time pipeline updates
+* SQLite persistence
 
-### Candidate Matching
+---
 
-Matches candidates from SQLite with selected job offers.
+## Candidate Timeline
 
-### ATS Score
+Track candidate history and recruitment events.
 
-Compares uploaded resumes against selected job offers and calculates compatibility.
+Examples:
 
-### Email Generator
+* Application received
+* Screening completed
+* Interview completed
+* Client review
+* Offer sent
+* Hired
 
-Generates personalized recruitment emails based on uploaded resumes and online job offers.
+Features:
 
-### Job Analyzer
+* Add timeline events
+* View full candidate history
+* Delete timeline events
 
-Analyzes job descriptions and suggests matching candidates from the SQLite database.
+---
 
-### Client Communication Agent
+## Online Job Search
 
-Generates delay messages and progress updates for clients stored in SQLite.
+Search live job opportunities from multiple job sources.
 
-## Future Improvements
+Current integrations:
 
-* Drag-and-drop candidate pipeline
-* Candidate profile pages
-* Email sending integration
-* Interview scheduler
-* Advanced AI matching with embeddings
-* Recruiter analytics dashboard
-* Authentication and user roles
+* Adzuna API
+* Remotive API
+* RapidAPI integrations (optional)
 
-## Author
+Search by:
 
-Built by Zouhour Abbessi as an AI recruitment SaaS project.
+* Job title
+* Skills
+* Keywords
+* Country
+
+Supported countries include:
+
+* United Kingdom
+* France
+* Canada
+* USA
+* Germany
+* Belgium
+* Netherlands
+* Australia
+* Italy
+* Spain
+* India
+* Singapore
+* South Africa
+
+---
+
+## Job Analyzer
+
+Convert unstructured job descriptions into structured recruitment data.
+
+Extracts:
+
+* Job title
+* Required skills
+* Experience requirements
+* Language requirements
+* Salary information
+
+Includes candidate recommendations from the database.
+
+---
+
+## ATS Resume Score Calculator
+
+Compare resumes against job opportunities.
+
+Outputs:
+
+* ATS score
+* Matching skills
+* Missing skills
+* Improvement suggestions
+
+---
+
+## AI Resume Parser
+
+Upload a resume PDF and automatically extract:
+
+* Name
+* Email
+* Phone
+* Country
+* Skills
+* Languages
+* Experience
+
+Powered by Groq LLM.
+
+---
+
+## AI Email Generator
+
+Generate personalized application emails using:
+
+* Resume content
+* Job information
+* Candidate profile
+* Required skills
+
+Includes:
+
+* Online job selection
+* Resume upload
+* Job link insertion
+
+---
+
+## AI Cover Letter Generator
+
+Generate customized cover letters using:
+
+* Uploaded resume
+* Job description
+
+AI automatically adapts content to the target role.
+
+---
+
+## Interview Scheduler
+
+Manage candidate interviews.
+
+Features:
+
+* Schedule interviews
+* Interview records
+* Candidate association
+* SQLite storage
+
+Interview types:
+
+* Online
+* Phone
+* On-site
+* Technical
+* HR
+
+---
+
+## Interview Invitation Email Generator
+
+Generate professional interview invitation emails using AI.
+
+Includes:
+
+* Candidate information
+* Job details
+* Interview details
+* Professional formatting
+
+---
+
+## AI Interview Questions Generator
+
+Generate dynamic interview questions based on:
+
+* Uploaded resume
+* Job title
+* Required skills
+* Job description
+
+Outputs:
+
+* Technical questions
+* HR questions
+* Behavioral questions
+* Case studies
+* Evaluation criteria
+
+---
+
+## AI Interview Scorecard
+
+Evaluate candidate interview answers using AI.
+
+Outputs:
+
+* Technical score
+* Communication score
+* Problem solving score
+* Overall score
+* Hiring recommendation
+
+Recommendations:
+
+* Strong Hire
+* Hire
+* Maybe
+* Reject
+
+---
+
+## Client Communication Agent
+
+Generate professional client communications.
+
+Includes:
+
+* Delay notifications
+* Progress updates
+* Service updates
+* Delivery communications
+
+Client records are stored dynamically in SQLite.
+
+---
+
+## AI Assistant
+
+AI-powered recruitment assistant.
+
+Capabilities:
+
+* Candidate analysis
+* Job analysis
+* ATS explanations
+* Recruitment insights
+* Hiring recommendations
+* Database exploration
+
+Powered by:
+
+* Groq API
+* LangChain
+* Llama 3.3 70B Versatile
+
+---
+
+# Technology Stack
+
+## Frontend
+
+* Streamlit
+
+## Backend
+
+* Python
+
+## Database
+
+* SQLite
+
+## Data Processing
+
+* Pandas
+
+## PDF Processing
+
+* pdfplumber
+
+## APIs
+
+* Adzuna API
+* Remotive API
+* RapidAPI
+
+## AI & LLM
+
+* Groq API
+* LangChain
+* LangChain-Groq
+* Llama 3.3 70B Versatile
+
+---
+
+# Project Structure
+
+```text
+TalentBridge/
+│
+├── app.py
+│
+├── database/
+│
+├── models/
+│   └── llm.py
+│
+├── services/
+│   ├── analytics_dashboard.py
+│   ├── assistant_agent.py
+│   ├── ats_score.py
+│   ├── candidate_timeline.py
+│   ├── candidate_matcher.py
+│   ├── client_agent.py
+│   ├── cover_letter_generator.py
+│   ├── cv_parser.py
+│   ├── email_generator.py
+│   ├── email_sender.py
+│   ├── interview_email.py
+│   ├── interview_questions.py
+│   ├── interview_scheduler.py
+│   ├── interview_scorecard.py
+│   ├── job_analyzer.py
+│   ├── job_api.py
+│   ├── pipeline_manager.py
+│   ├── recommendation_engine.py
+│   └── resume_reader.py
+│
+├── assets/
+│
+├── requirements.txt
+├── README.md
+└── .gitignore
+```
+
+---
+
+# Environment Variables
+
+Create a `.env` file:
+
+```env
+GROQ_API_KEY=your_groq_api_key
+
+ADZUNA_APP_ID=your_adzuna_app_id
+ADZUNA_APP_KEY=your_adzuna_app_key
+
+RAPIDAPI_KEY=your_rapidapi_key
+
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_ADDRESS=your_email@gmail.com
+EMAIL_PASSWORD=your_app_password
+```
+
+---
+
+# Installation
+
+```bash
+git clone https://github.com/your-username/TalentBridge.git
+
+cd TalentBridge
+
+python -m venv venv
+
+venv\Scripts\activate
+
+pip install -r requirements.txt
+```
+
+---
+
+# Run Locally
+
+```bash
+streamlit run app.py
+```
+
+---
+
+# Roadmap
+
+Future improvements:
+
+* User authentication
+* PostgreSQL cloud database
+* Multi-user workspaces
+* Real drag-and-drop pipeline
+* Recruiter KPI dashboard
+* Email tracking
+* AI interview copilot
+* Candidate semantic search
+* Resume ranking engine
+
+---
+
+# Author
+
+Developed by Zouhour Abbessi.
+
+TalentBridge demonstrates how Artificial Intelligence can transform recruitment workflows, candidate evaluation, hiring decisions, interview management, and talent acquisition processes.
+
+---
+
+# License
+
+Educational, portfolio, and research purposes.
