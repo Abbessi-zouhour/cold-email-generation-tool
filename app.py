@@ -17,6 +17,7 @@ from services.recommendation_engine import recommend_candidates
 from services.interview_questions import generate_interview_questions
 from services.interview_email import generate_interview_invitation_email
 from services.email_sender import send_email
+from services.pipeline_manager import update_candidate_stage
 from services.interview_scorecard import evaluate_candidate
 from database_manager import (
     get_candidates,
@@ -34,6 +35,20 @@ from services.interview_scheduler import (
     add_interview,
     get_interviews,
     delete_interview
+)
+from services.analytics_dashboard import (
+    calculate_dashboard_metrics,
+    get_pipeline_counts,
+    get_status_counts,
+    get_country_counts,
+    get_jobs_by_country,
+    get_interviews_by_status
+)
+from services.candidate_timeline import *
+from services.candidate_timeline import (
+    add_timeline_event,
+    get_candidate_timeline,
+    delete_timeline_event
 )
 
 BASE_DIR = Path(__file__).parent
@@ -64,6 +79,7 @@ menu_options = [
     "Candidate Profile",
     "Candidate Matching",
     "Candidate Pipeline",
+    "Candidate Timeline",
     "Interview Scheduler",
     "AI Interview Questions",
     "Interview Scorecard",
@@ -196,52 +212,86 @@ if menu == "Dashboard":
     candidates = get_candidates()
     jobs = get_jobs()
     clients = get_clients()
+    interviews = get_interviews()
 
-    total_candidates = len(candidates)
-    total_jobs = len(jobs)
-    total_clients = len(clients)
+    metrics = calculate_dashboard_metrics(
+        candidates,
+        jobs,
+        clients,
+        interviews
+    )
 
-    available_candidates = len(candidates[candidates["status"].astype(str) == "Available"])
-    placed_candidates = len(candidates[candidates["status"].astype(str) == "Placed"])
-
-    open_jobs = len(jobs[jobs["status"].astype(str) == "Open"]) if "status" in jobs.columns else total_jobs
-
-    pipeline_counts = candidates["pipeline_stage"].astype(str).value_counts()
-    status_counts = candidates["status"].astype(str).value_counts()
+    pipeline_counts = get_pipeline_counts(candidates)
+    status_counts = get_status_counts(candidates)
+    country_counts = get_country_counts(candidates)
+    jobs_country_counts = get_jobs_by_country(jobs)
+    interview_status_counts = get_interviews_by_status(interviews)
 
     st.markdown("""
     <h1 class="hero-title">AI-powered <span>recruitment intelligence</span> platform</h1>
     <p class="hero-subtitle">
-        Live recruitment dashboard powered by SQLite, online job search, AI analysis and candidate intelligence.
+        Live recruitment dashboard, online job search, AI analysis and candidate intelligence.
     </p>
     """, unsafe_allow_html=True)
 
     st.markdown(f"""
     <div class="stats-grid">
-        <div class="stat"><h2>{total_candidates}</h2><p>Total candidates</p></div>
-        <div class="stat"><h2>{total_jobs}</h2><p>Total job offers</p></div>
-        <div class="stat"><h2>{total_clients}</h2><p>Total clients</p></div>
-        <div class="stat"><h2>{open_jobs}</h2><p>Open positions</p></div>
+        <div class="stat"><h2>{metrics["total_candidates"]}</h2><p>Total candidates</p></div>
+        <div class="stat"><h2>{metrics["total_jobs"]}</h2><p>Total job offers</p></div>
+        <div class="stat"><h2>{metrics["total_clients"]}</h2><p>Total clients</p></div>
+        <div class="stat"><h2>{metrics["total_interviews"]}</h2><p>Scheduled interviews</p></div>
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### Recruitment overview")
+    st.markdown(f"""
+    <div class="stats-grid">
+        <div class="stat"><h2>{metrics["open_jobs"]}</h2><p>Open positions</p></div>
+        <div class="stat"><h2>{metrics["available_candidates"]}</h2><p>Available candidates</p></div>
+        <div class="stat"><h2>{metrics["hired_candidates"]}</h2><p>Hired candidates</p></div>
+        <div class="stat"><h2>{metrics["hiring_rate"]}%</h2><p>Hiring rate</p></div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("### Analytics charts")
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("#### Candidates by status")
-        if not status_counts.empty:
-            st.bar_chart(status_counts)
-        else:
-            st.info("No candidate status data available.")
-
-    with col2:
-        st.markdown("#### Candidates by pipeline stage")
-        if not pipeline_counts.empty:
+        st.markdown("#### Pipeline distribution")
+        if pipeline_counts is not None and not pipeline_counts.empty:
             st.bar_chart(pipeline_counts)
         else:
             st.info("No pipeline data available.")
+
+    with col2:
+        st.markdown("#### Candidates by status")
+        if status_counts is not None and not status_counts.empty:
+            st.bar_chart(status_counts)
+        else:
+            st.info("No status data available.")
+
+    col3, col4 = st.columns(2)
+
+    with col3:
+        st.markdown("#### Candidates by country")
+        if country_counts is not None and not country_counts.empty:
+            st.bar_chart(country_counts)
+        else:
+            st.info("No country data available.")
+
+    with col4:
+        st.markdown("#### Jobs by country")
+        if jobs_country_counts is not None and not jobs_country_counts.empty:
+            st.bar_chart(jobs_country_counts)
+        else:
+            st.info("No job country data available.")
+
+    st.markdown("#### Interviews by status")
+
+    if interview_status_counts is not None and not interview_status_counts.empty:
+        st.bar_chart(interview_status_counts)
+    else:
+        st.info("No interview status data yet.")
 
     st.markdown("### Quick insights")
 
@@ -251,21 +301,21 @@ if menu == "Dashboard":
         st.markdown(f"""
         <div class="card">
             <h3>Available talent</h3>
-            <p>{available_candidates} candidates are currently available for new opportunities.</p>
+            <p>{metrics["available_candidates"]} candidates are currently available for new opportunities.</p>
         </div>
         """, unsafe_allow_html=True)
 
     with insight_col2:
         st.markdown(f"""
         <div class="card">
-            <h3>Placed candidates</h3>
-            <p>{placed_candidates} candidates have already been placed or hired.</p>
+            <h3>Interview activity</h3>
+            <p>{metrics["total_interviews"]} interviews are currently scheduled in the system.</p>
         </div>
         """, unsafe_allow_html=True)
 
     with insight_col3:
-        top_stage = pipeline_counts.index[0] if not pipeline_counts.empty else "No data"
-        top_stage_count = pipeline_counts.iloc[0] if not pipeline_counts.empty else 0
+        top_stage = pipeline_counts.index[0] if pipeline_counts is not None and not pipeline_counts.empty else "No data"
+        top_stage_count = pipeline_counts.iloc[0] if pipeline_counts is not None and not pipeline_counts.empty else 0
 
         st.markdown(f"""
         <div class="card">
@@ -276,36 +326,50 @@ if menu == "Dashboard":
 
     st.markdown("### Latest candidates")
 
-    latest_candidates = candidates.tail(5).copy()
-
-    st.dataframe(
-        latest_candidates,
-        width="stretch",
-        hide_index=True
-    )
+    if not candidates.empty:
+        st.dataframe(
+            candidates.tail(5),
+            width="stretch",
+            hide_index=True
+        )
+    else:
+        st.info("No candidates available.")
 
     st.markdown("### Latest job opportunities")
 
-    latest_jobs = jobs.tail(5).copy()
-
-    display_job_cols = [
-        col for col in [
-            "company",
-            "country",
-            "job_title",
-            "required_skills",
-            "salary_range",
-            "status",
-            "job_link"
+    if not jobs.empty:
+        display_job_cols = [
+            col for col in [
+                "company",
+                "country",
+                "job_title",
+                "required_skills",
+                "salary_range",
+                "status",
+                "job_link"
+            ]
+            if col in jobs.columns
         ]
-        if col in latest_jobs.columns
-    ]
 
-    st.dataframe(
-        latest_jobs[display_job_cols],
-        width="stretch",
-        hide_index=True
-    )
+        st.dataframe(
+            jobs[display_job_cols].tail(5),
+            width="stretch",
+            hide_index=True
+        )
+    else:
+        st.info("No jobs available.")
+
+    st.markdown("### Upcoming interviews")
+
+    if not interviews.empty:
+        st.dataframe(
+            interviews.tail(5),
+            width="stretch",
+            hide_index=True
+        )
+    else:
+        st.info("No interviews scheduled.")
+
 elif menu == "Job Offers":
     st.markdown('<div class="section-title">Job Offers</div>', unsafe_allow_html=True)
 
@@ -453,11 +517,12 @@ elif menu == "Job Offers":
                 st.markdown(f"- [{job_title} — {company}]({link})")
             else:
                 st.markdown(f"- {job_title} — {company} *(no link available)*")
+
 elif menu == "Candidate Pipeline":
     st.markdown(
         '<div class="section-eyebrow">PIPELINE</div>'
         '<h2 class="section-title">Candidate pipeline</h2>'
-        '<p class="section-subtitle">Track candidates across the recruitment process.</p>',
+        '<p class="section-subtitle">Track and update candidates across the recruitment process.</p>',
         unsafe_allow_html=True
     )
 
@@ -470,6 +535,49 @@ elif menu == "Candidate Pipeline":
         "Hired",
         "Rejected"
     ]
+
+    st.markdown("### Move candidate to another stage")
+
+    valid_candidates = candidates.dropna(subset=["id", "name"])
+
+    if valid_candidates.empty:
+        st.warning("No candidates available.")
+    else:
+        candidate_options = (
+            valid_candidates["name"].astype(str)
+            + " — "
+            + valid_candidates["pipeline_stage"].astype(str)
+            + " — ID "
+            + valid_candidates["id"].astype(str)
+        )
+
+        selected_candidate = st.selectbox(
+            "Select candidate",
+            candidate_options
+        )
+
+        candidate_id = int(float(selected_candidate.split("ID ")[1]))
+
+        candidate_row = valid_candidates[
+            valid_candidates["id"].astype(float).astype(int) == candidate_id
+        ].iloc[0]
+
+        current_stage = str(candidate_row.get("pipeline_stage", "Applied"))
+
+        new_stage = st.selectbox(
+            "Move to stage",
+            stages,
+            index=stages.index(current_stage) if current_stage in stages else 0
+        )
+
+        if st.button("Update candidate stage", width="stretch"):
+            update_candidate_stage(candidate_id, new_stage)
+            st.success(f"{candidate_row.get('name', '')} moved to {new_stage}.")
+            st.rerun()
+
+    st.markdown("### Pipeline board")
+
+    candidates = get_candidates()
 
     pipeline_html = '<div class="kanban-board">'
 
@@ -506,6 +614,193 @@ elif menu == "Candidate Pipeline":
     pipeline_html += '</div>'
 
     st.markdown(pipeline_html, unsafe_allow_html=True)
+
+elif menu == "Candidate Timeline":
+
+    st.markdown(
+        '<div class="section-title">Candidate Timeline</div>',
+        unsafe_allow_html=True
+    )
+
+    st.caption(
+        "Track every interaction and milestone for each candidate."
+    )
+
+    valid_candidates = candidates.dropna(
+        subset=["id", "name"]
+    )
+
+    if valid_candidates.empty:
+
+        st.warning("No candidates available.")
+
+    else:
+
+        candidate_options = (
+            valid_candidates["name"].astype(str)
+            + " — ID "
+            + valid_candidates["id"].astype(float).astype(int).astype(str)
+        )
+
+        selected_candidate = st.selectbox(
+            "Select candidate",
+            candidate_options
+        )
+
+        candidate_id = int(
+            selected_candidate.split("ID ")[1]
+        )
+
+        candidate_row = valid_candidates[
+            valid_candidates["id"].astype(float).astype(int)
+            == candidate_id
+        ].iloc[0]
+
+        st.markdown("### Candidate Information")
+
+        st.info(
+            f"""
+Name: {candidate_row.get('name','')}
+
+Email: {candidate_row.get('email','')}
+
+Country: {candidate_row.get('country','')}
+
+Experience: {candidate_row.get('experience_years',0)} years
+
+Skills: {candidate_row.get('skills','')}
+
+Current Stage: {candidate_row.get('pipeline_stage','')}
+"""
+        )
+
+        st.markdown("### Add Timeline Event")
+
+        event_date = st.date_input(
+            "Event Date"
+        )
+
+        event_type = st.selectbox(
+            "Event Type",
+            [
+                "Applied",
+                "Screening",
+                "Phone Interview",
+                "Technical Interview",
+                "HR Interview",
+                "Client Review",
+                "Offer Sent",
+                "Offer Accepted",
+                "Offer Rejected",
+                "Hired",
+                "Rejected"
+            ]
+        )
+
+        notes = st.text_area(
+            "Notes",
+            placeholder="Add recruiter notes..."
+        )
+
+        if st.button(
+            "Add Timeline Event",
+            width="stretch"
+        ):
+
+            add_timeline_event(
+                candidate_id=candidate_id,
+                event_date=str(event_date),
+                event_type=event_type,
+                notes=notes
+            )
+
+            st.success(
+                "Timeline event added successfully."
+            )
+
+            st.rerun()
+
+        st.markdown("### Candidate Timeline")
+
+        timeline = get_candidate_timeline(
+            candidate_id
+        )
+
+        if timeline.empty:
+
+            st.info(
+                "No timeline events recorded yet."
+            )
+
+        else:
+
+            for _, row in timeline.iterrows():
+
+                st.markdown(
+                    f"""
+<div class="card">
+<h3>{row['event_type']}</h3>
+<p><b>Date:</b> {row['event_date']}</p>
+<p>{row['notes']}</p>
+</div>
+""",
+                    unsafe_allow_html=True
+                )
+
+            st.dataframe(
+                timeline,
+                width="stretch",
+                hide_index=True
+            )
+
+            st.markdown("### Delete Timeline Event")
+
+            event_options = (
+                timeline["event_type"].astype(str)
+                + " — "
+                + timeline["event_date"].astype(str)
+                + " — ID "
+                + timeline["id"].astype(str)
+            )
+
+            selected_event = st.selectbox(
+                "Select event to delete",
+                event_options
+            )
+
+            event_id = int(
+                float(
+                    selected_event.split("ID ")[1]
+                )
+            )
+
+            confirm_delete = st.checkbox(
+                "I confirm delete this event"
+            )
+
+            if st.button(
+                "Delete Timeline Event",
+                width="stretch"
+            ):
+
+                if confirm_delete:
+
+                    delete_timeline_event(
+                        event_id
+                    )
+
+                    st.success(
+                        "Timeline event deleted successfully."
+                    )
+
+                    st.rerun()
+
+                else:
+
+                    st.warning(
+                        "Please confirm deletion first."
+                    )
+
 elif menu == "Interview Scheduler":
     st.markdown('<div class="section-title">Interview Scheduler</div>', unsafe_allow_html=True)
 
@@ -524,8 +819,10 @@ elif menu == "Interview Scheduler":
         else:
             candidate_options = (
                 valid_candidates["name"].astype(str)
+                + " — "
+                + valid_candidates["pipeline_stage"].astype(str)
                 + " — ID "
-                + valid_candidates["id"].astype(str)
+                + valid_candidates["id"].astype(float).astype(int).astype(str)
             )
 
             selected_candidate = st.selectbox(
@@ -538,7 +835,24 @@ elif menu == "Interview Scheduler":
             candidate_row = valid_candidates[
                 valid_candidates["id"].astype(float).astype(int) == candidate_id
             ].iloc[0]
+            
+            st.markdown("### Candidate Details")
 
+            st.info(
+                f"""
+            Name: {candidate_row.get('name','')}
+
+            Email: {candidate_row.get('email','')}
+
+            Country: {candidate_row.get('country','')}
+
+            Experience: {candidate_row.get('experience_years',0)} years
+
+            Skills: {candidate_row.get('skills','')}
+
+            Current Stage: {candidate_row.get('pipeline_stage','')}
+            """
+            )
             job_title = st.text_input("Job title")
             company = st.text_input("Company")
             interview_date = st.date_input("Interview date")
@@ -968,7 +1282,7 @@ elif menu == "Interview Scorecard":
             st.warning(
                 "Please provide questions and answers."
             )
-            
+
 elif menu == "Email Generator":
     st.markdown('<div class="section-title">Personalized Email Generator</div>', unsafe_allow_html=True)
     st.caption("Upload a resume PDF, search an online job offer, then generate a personalized application email.")
