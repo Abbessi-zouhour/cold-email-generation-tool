@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 from pathlib import Path
 from PIL import Image
+from datetime import date
 
 from services.candidate_matcher import match_candidates
 from services.email_generator import generate_email
@@ -50,6 +51,14 @@ from services.candidate_timeline import (
     get_candidate_timeline,
     delete_timeline_event
 )
+from services.supabase_manager import (
+    get_candidates_supabase,
+    get_candidate_by_id_supabase,
+    add_candidate_supabase,
+    update_candidate_stage_supabase,
+    add_timeline_event_supabase,
+)
+from services.supabase_client import supabase
 
 BASE_DIR = Path(__file__).parent
 LOGO_PATH = BASE_DIR / "assets" / "images" / "logo.png"
@@ -369,7 +378,8 @@ if menu == "Dashboard":
         )
     else:
         st.info("No interviews scheduled.")
-
+    st.write("Supabase candidates test")
+    st.dataframe(get_candidates_supabase().head())
 elif menu == "Job Offers":
     st.markdown('<div class="section-title">Job Offers</div>', unsafe_allow_html=True)
 
@@ -517,6 +527,259 @@ elif menu == "Job Offers":
                 st.markdown(f"- [{job_title} — {company}]({link})")
             else:
                 st.markdown(f"- {job_title} — {company} *(no link available)*")
+elif menu == "Candidates":
+
+    st.markdown(
+        '<div class="section-title">Candidates</div>',
+        unsafe_allow_html=True
+    )
+
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "Add candidate",
+        "Edit candidate",
+        "Delete candidate",
+        "View candidates"
+    ])
+
+    # ==========================
+    # ADD CANDIDATE
+    # ==========================
+    with tab1:
+
+        st.subheader("Add new candidate")
+
+        name = st.text_input("Name")
+        email = st.text_input("Email")
+        phone = st.text_input("Phone")
+        country = st.text_input("Country")
+
+        experience_years = st.number_input(
+            "Experience (years)",
+            min_value=0,
+            max_value=50,
+            value=0
+        )
+
+        languages = st.text_input("Languages")
+        skills = st.text_area("Skills")
+
+        status = st.selectbox(
+            "Status",
+            [
+                "Available",
+                "Interviewing",
+                "Placed",
+                "Rejected"
+            ]
+        )
+
+        pipeline_stage = st.selectbox(
+            "Pipeline stage",
+            [
+                "Applied",
+                "Screening",
+                "Interview Scheduled",
+                "Client Review",
+                "Offer Sent",
+                "Hired",
+                "Rejected"
+            ]
+        )
+
+        if st.button("Save candidate", width="stretch"):
+
+            try:
+
+                result = add_candidate_supabase(
+                    name=name,
+                    email=email,
+                    phone=phone,
+                    country=country,
+                    experience_years=experience_years,
+                    languages=languages,
+                    skills=skills,
+                    status=status,
+                    pipeline_stage=pipeline_stage
+                )
+
+                if result:
+                    st.success(" Candidate saved successfully.")
+                    st.dataframe(pd.DataFrame(result))
+                else:
+                    st.warning("Candidate was not saved.")
+
+            except Exception as e:
+                st.error(f"Error saving candidate: {e}")
+
+    # ==========================
+    # EDIT CANDIDATE
+    # ==========================
+    with tab2:
+
+        candidates = get_candidates_supabase()
+
+        if candidates.empty:
+            st.warning("No candidates found.")
+        else:
+
+            candidate_options = (
+                candidates["name"].astype(str)
+                + " — ID "
+                + candidates["id"].astype(str)
+            )
+
+            selected = st.selectbox(
+                "Select candidate",
+                candidate_options
+            )
+
+            candidate_id = int(
+                selected.split("ID ")[1]
+            )
+
+            candidate = candidates[
+                candidates["id"] == candidate_id
+            ].iloc[0]
+
+            new_name = st.text_input(
+                "Name",
+                candidate["name"]
+            )
+
+            new_email = st.text_input(
+                "Email",
+                candidate["email"]
+            )
+
+            if st.button("Update candidate", width="stretch"):
+
+                try:
+
+                    supabase.table("candidates")\
+                        .update({
+                            "name": new_name,
+                            "email": new_email
+                        })\
+                        .eq("id", candidate_id)\
+                        .execute()
+
+                    st.success(" Candidate updated.")
+
+                except Exception as e:
+                    st.error(e)
+
+    # ==========================
+    # DELETE CANDIDATE
+    # ==========================
+    with tab3:
+
+        candidates = get_candidates_supabase()
+
+        if candidates.empty:
+            st.warning("No candidates found.")
+        else:
+
+            candidate_options = (
+                candidates["name"].astype(str)
+                + " — ID "
+                + candidates["id"].astype(str)
+            )
+
+            selected = st.selectbox(
+                "Candidate to delete",
+                candidate_options
+            )
+
+            candidate_id = int(
+                selected.split("ID ")[1]
+            )
+
+            if st.button("Delete candidate", width="stretch"):
+
+                try:
+
+                    supabase.table("candidates")\
+                        .delete()\
+                        .eq("id", candidate_id)\
+                        .execute()
+
+                    st.success(" Candidate deleted.")
+
+                except Exception as e:
+                    st.error(e)
+
+    # ==========================
+    # VIEW CANDIDATES
+    # ==========================
+    with tab4:
+
+        candidates = get_candidates_supabase()
+
+        if candidates.empty:
+            st.warning("No candidates found.")
+        else:
+
+            st.metric(
+                "Total candidates",
+                len(candidates)
+            )
+
+            st.dataframe(
+                candidates,
+                width="stretch"
+            )
+
+elif menu == "Candidate Profile":
+    st.markdown('<div class="section-title">Candidate Profile</div>', unsafe_allow_html=True)
+
+    candidates = get_candidates_supabase()
+
+    if candidates.empty:
+        st.warning("No candidates found in Supabase.")
+    elif "id" not in candidates.columns or "name" not in candidates.columns:
+        st.error("Supabase candidates table must contain 'id' and 'name' columns.")
+        st.write("Current columns:", list(candidates.columns))
+    else:
+        candidates = candidates.dropna(subset=["id", "name"])
+        candidates = candidates[candidates["name"].astype(str).str.lower() != "nan"]
+
+        if candidates.empty:
+            st.warning("No valid candidates found.")
+        else:
+            candidate_options = (
+                candidates["name"].astype(str)
+                + " — ID "
+                + candidates["id"].astype(float).astype(int).astype(str)
+            ).tolist()
+
+            selected_candidate = st.selectbox(
+                "Select candidate",
+                candidate_options,
+                key="pipeline_selected_candidate"
+            )
+
+            candidate_id = int(float(selected_candidate.split("ID ")[1]))
+
+            candidate_df = get_candidate_by_id_supabase(candidate_id)
+
+            if candidate_df.empty:
+                st.warning("Candidate not found.")
+            else:
+                candidate = candidate_df.iloc[0]
+
+                st.markdown(f"""
+                <div class="card">
+                    <h2>{candidate.get("name", "")}</h2>
+                    <p><b>Email:</b> {candidate.get("email", "")}</p>
+                    <p><b>Phone:</b> {candidate.get("phone", "")}</p>
+                    <p><b>Country:</b> {candidate.get("country", "")}</p>
+                    <p><b>Experience:</b> {candidate.get("experience_years", 0)} years</p>
+                    <p><b>Languages:</b> {candidate.get("languages", "")}</p>
+                    <p><b>Status:</b> {candidate.get("status", "")}</p>
+                    <p><b>Pipeline stage:</b> {candidate.get("pipeline_stage", "")}</p>
+                    <p><b>Skills:</b> {candidate.get("skills", "")}</p>
+                </div>
+                """, unsafe_allow_html=True)
 
 elif menu == "Candidate Pipeline":
     st.markdown(
@@ -536,54 +799,61 @@ elif menu == "Candidate Pipeline":
         "Rejected"
     ]
 
-    st.markdown("### Move candidate to another stage")
+    candidates = get_candidates_supabase()
 
-    valid_candidates = candidates.dropna(subset=["id", "name"])
+    if candidates.empty:
+        st.warning("No candidates found.")
+        st.stop()
 
-    if valid_candidates.empty:
-        st.warning("No candidates available.")
-    else:
-        candidate_options = (
-            valid_candidates["name"].astype(str)
+    candidates = candidates.dropna(subset=["id", "name"])
+
+    candidate_ids = candidates["id"].astype(int).tolist()
+
+    selected_id = st.selectbox(
+        "Select candidate",
+        candidate_ids,
+        format_func=lambda x: (
+            candidates[candidates["id"].astype(int) == x].iloc[0]["name"]
             + " — "
-            + valid_candidates["pipeline_stage"].astype(str)
-            + " — ID "
-            + valid_candidates["id"].astype(str)
+            + str(candidates[candidates["id"].astype(int) == x].iloc[0]["pipeline_stage"])
+            + f" — ID {x}"
+        )
+    )
+
+    candidate_row = candidates[
+        candidates["id"].astype(int) == int(selected_id)
+    ].iloc[0]
+
+    current_stage = str(candidate_row.get("pipeline_stage", "Applied"))
+
+    new_stage = st.selectbox(
+        "Move to stage",
+        stages,
+        index=stages.index(current_stage) if current_stage in stages else 0
+    )
+
+    if st.button("Update candidate stage", width="stretch"):
+        update_candidate_stage_supabase(int(selected_id), new_stage)
+
+        add_timeline_event_supabase(
+            candidate_id=int(selected_id),
+            event_date=date.today(),
+            event_type=f"Moved to {new_stage}",
+            notes=f"Candidate moved from {current_stage} to {new_stage}."
         )
 
-        selected_candidate = st.selectbox(
-            "Select candidate",
-            candidate_options
-        )
-
-        candidate_id = int(float(selected_candidate.split("ID ")[1]))
-
-        candidate_row = valid_candidates[
-            valid_candidates["id"].astype(float).astype(int) == candidate_id
-        ].iloc[0]
-
-        current_stage = str(candidate_row.get("pipeline_stage", "Applied"))
-
-        new_stage = st.selectbox(
-            "Move to stage",
-            stages,
-            index=stages.index(current_stage) if current_stage in stages else 0
-        )
-
-        if st.button("Update candidate stage", width="stretch"):
-            update_candidate_stage(candidate_id, new_stage)
-            st.success(f"{candidate_row.get('name', '')} moved to {new_stage}.")
-            st.rerun()
+        st.success(f"{candidate_row.get('name', '')} moved to {new_stage}.")
+        st.rerun()
 
     st.markdown("### Pipeline board")
 
-    candidates = get_candidates()
+    refreshed_candidates = get_candidates_supabase()
 
     pipeline_html = '<div class="kanban-board">'
 
     for stage in stages:
-        stage_candidates = candidates[
-            candidates["pipeline_stage"].astype(str) == stage
+        stage_candidates = refreshed_candidates[
+            refreshed_candidates["pipeline_stage"].astype(str) == stage
         ]
 
         pipeline_html += (
@@ -614,9 +884,7 @@ elif menu == "Candidate Pipeline":
     pipeline_html += '</div>'
 
     st.markdown(pipeline_html, unsafe_allow_html=True)
-
-elif menu == "Candidate Timeline":
-
+    
     st.markdown(
         '<div class="section-title">Candidate Timeline</div>',
         unsafe_allow_html=True
