@@ -162,7 +162,7 @@ use_online_jobs = st.sidebar.button("Fetch Online Jobs")
 if uploaded_candidates is not None:
     candidates = pd.read_csv(uploaded_candidates)
 else:
-    candidates = get_candidates()
+    candidates = get_candidates_supabase()
 
 if use_online_jobs:
     jobs = fetch_online_jobs(
@@ -172,12 +172,12 @@ if use_online_jobs:
 elif uploaded_jobs is not None:
     jobs = pd.read_csv(uploaded_jobs)
 else:
-    jobs = get_jobs()
+    jobs = get_jobs_supabase()
 
 if uploaded_clients is not None:
     clients = pd.read_csv(uploaded_clients)
 else:
-    clients = get_clients()
+    clients = get_clients_supabase()
 
 
 # Top navigation
@@ -218,10 +218,10 @@ menu = st.session_state.page
 st.divider()
 
 if menu == "Dashboard":
-    candidates = get_candidates()
-    jobs = get_jobs()
-    clients = get_clients()
-    interviews = get_interviews()
+    candidates = get_candidates_supabase()
+    jobs = get_jobs_supabase()
+    clients = get_clients_supabase()
+    interviews = get_interviews_supabase()
 
     metrics = calculate_dashboard_metrics(
         candidates,
@@ -884,7 +884,7 @@ elif menu == "Candidate Pipeline":
     pipeline_html += '</div>'
 
     st.markdown(pipeline_html, unsafe_allow_html=True)
-    
+
     st.markdown(
         '<div class="section-title">Candidate Timeline</div>',
         unsafe_allow_html=True
@@ -1155,7 +1155,7 @@ elif menu == "Interview Scheduler":
     with tab_records:
         st.subheader("Scheduled interviews")
 
-        interviews = get_interviews()
+        interviews = get_interviews_supabase()
 
         if interviews.empty:
             st.info("No interviews scheduled yet.")
@@ -1832,7 +1832,7 @@ elif menu == "Cover Letter Generator":
 elif menu == "Client Communication Agent":
     st.markdown('<div class="section-title">Client Communication Agent</div>', unsafe_allow_html=True)
 
-    clients = get_clients()
+    clients = get_clients_supabase()
 
     tab1, tab2, tab3, tab4 = st.tabs([
         "Delay Message",
@@ -1916,7 +1916,7 @@ elif menu == "Client Communication Agent":
     with tab3:
         st.subheader("Client Records")
 
-        clients = get_clients()
+        clients = get_clients_supabase()
 
         st.dataframe(
             clients,
@@ -1927,7 +1927,7 @@ elif menu == "Client Communication Agent":
     with tab4:
         st.subheader("Manage clients")
 
-        clients = get_clients()
+        clients = get_clients_supabase()
 
         action = st.selectbox(
             "Action",
