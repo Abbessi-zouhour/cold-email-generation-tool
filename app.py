@@ -53,10 +53,13 @@ from services.candidate_timeline import (
 )
 from services.supabase_manager import (
     get_candidates_supabase,
+    get_jobs_supabase,
+    get_clients_supabase,
+    get_interviews_supabase,
     get_candidate_by_id_supabase,
     add_candidate_supabase,
     update_candidate_stage_supabase,
-    add_timeline_event_supabase,
+    add_timeline_event_supabase
 )
 from services.supabase_client import supabase
 
