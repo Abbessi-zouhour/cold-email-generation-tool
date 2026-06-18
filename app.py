@@ -28,9 +28,7 @@ from database_manager import (
     add_candidate,
     update_candidate,
     delete_candidate,
-    add_client,
-    update_client,
-    delete_client
+
 )
 from services.interview_scheduler import (
     add_interview,
@@ -46,11 +44,15 @@ from services.analytics_dashboard import (
     get_interviews_by_status
 )
 from services.candidate_timeline import *
-from services.candidate_timeline import (
-    add_timeline_event,
-    get_candidate_timeline,
-    delete_timeline_event
+from services.supabase_manager import (
+    add_interview_supabase,
+    delete_interview_supabase,
+    get_interviews_supabase,
+    update_candidate_stage_supabase,
+    add_timeline_event_supabase,
+    get_candidates_supabase,
 )
+
 from services.supabase_manager import (
     get_candidates_supabase,
     get_jobs_supabase,
@@ -59,7 +61,12 @@ from services.supabase_manager import (
     get_candidate_by_id_supabase,
     add_candidate_supabase,
     update_candidate_stage_supabase,
-    add_timeline_event_supabase
+    add_timeline_event_supabase,
+    get_candidate_timeline_supabase,
+
+    add_client_supabase,
+    update_client_supabase,
+    delete_client_supabase
 )
 from services.supabase_client import supabase
 
@@ -426,7 +433,7 @@ elif menu == "Job Offers":
         search_online_clicked = st.button("Search Online Jobs", width="stretch")
 
     with col_reset:
-        show_local_clicked = st.button("Show Local SQLite Jobs", width="stretch")
+        show_local_clicked = st.button("Show Local Jobs", width="stretch")
 
     if search_online_clicked and search_job.strip():
         with st.spinner("Fetching online job offers..."):
@@ -1071,7 +1078,84 @@ Current Stage: {candidate_row.get('pipeline_stage','')}
                     st.warning(
                         "Please confirm deletion first."
                     )
+elif menu == "Candidate Timeline":
+    st.markdown('<div class="section-title">Candidate Timeline</div>', unsafe_allow_html=True)
 
+    candidates = get_candidates_supabase()
+
+    if candidates.empty or "id" not in candidates.columns or "name" not in candidates.columns:
+        st.warning("No valid candidates found from Supabase.")
+        st.stop()
+
+    valid_candidates = candidates.dropna(subset=["id", "name"])
+
+    candidate_options = (
+        valid_candidates["name"].astype(str)
+        + " — ID "
+        + valid_candidates["id"].astype(float).astype(int).astype(str)
+    )
+
+    selected_candidate = st.selectbox(
+        "Select candidate",
+        candidate_options,
+        key="timeline_candidate_select"
+    )
+
+    candidate_id = int(float(selected_candidate.split("ID ")[1]))
+
+    st.markdown("### Add timeline event")
+
+    event_date = st.date_input("Event date", value=date.today())
+    event_type = st.selectbox(
+        "Event type",
+        [
+            "Applied",
+            "Screening",
+            "Interview Scheduled",
+            "Client Review",
+            "Offer Sent",
+            "Hired",
+            "Rejected",
+            "Note"
+        ]
+    )
+
+    notes = st.text_area("Notes")
+
+    if st.button("Add Timeline Event", width="stretch"):
+        add_timeline_event_supabase(
+            candidate_id=candidate_id,
+            event_date=event_date,
+            event_type=event_type,
+            notes=notes
+        )
+
+        st.success("Timeline event added successfully.")
+        st.rerun()
+
+    st.markdown("### Candidate Timeline")
+
+    timeline = get_candidate_timeline_supabase(candidate_id)
+
+    if timeline.empty:
+        st.info("No timeline events found for this candidate.")
+    else:
+        timeline = timeline.sort_values(by="event_date", ascending=False)
+
+        for _, event in timeline.iterrows():
+            st.markdown(f"""
+            <div class="card">
+                <h3>{event.get("event_type", "")}</h3>
+                <p><b>Date:</b> {event.get("event_date", "")}</p>
+                <p>{event.get("notes", "")}</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.dataframe(
+            timeline,
+            width="stretch",
+            hide_index=True
+        )
 elif menu == "Interview Scheduler":
     st.markdown('<div class="section-title">Interview Scheduler</div>', unsafe_allow_html=True)
 
@@ -1083,11 +1167,13 @@ elif menu == "Interview Scheduler":
     with tab_schedule:
         st.subheader("Schedule new interview")
 
-        valid_candidates = candidates.dropna(subset=["id", "name"])
+        candidates = get_candidates_supabase()
 
-        if valid_candidates.empty:
+        if candidates.empty or "id" not in candidates.columns or "name" not in candidates.columns:
             st.warning("No candidates available.")
         else:
+            valid_candidates = candidates.dropna(subset=["id", "name"])
+
             candidate_options = (
                 valid_candidates["name"].astype(str)
                 + " — "
@@ -1098,7 +1184,8 @@ elif menu == "Interview Scheduler":
 
             selected_candidate = st.selectbox(
                 "Select candidate",
-                candidate_options
+                candidate_options,
+                key="interview_candidate_select"
             )
 
             candidate_id = int(float(selected_candidate.split("ID ")[1]))
@@ -1106,24 +1193,25 @@ elif menu == "Interview Scheduler":
             candidate_row = valid_candidates[
                 valid_candidates["id"].astype(float).astype(int) == candidate_id
             ].iloc[0]
-            
+
             st.markdown("### Candidate Details")
 
             st.info(
                 f"""
-            Name: {candidate_row.get('name','')}
+Name: {candidate_row.get('name','')}
 
-            Email: {candidate_row.get('email','')}
+Email: {candidate_row.get('email','')}
 
-            Country: {candidate_row.get('country','')}
+Country: {candidate_row.get('country','')}
 
-            Experience: {candidate_row.get('experience_years',0)} years
+Experience: {candidate_row.get('experience_years',0)} years
 
-            Skills: {candidate_row.get('skills','')}
+Skills: {candidate_row.get('skills','')}
 
-            Current Stage: {candidate_row.get('pipeline_stage','')}
-            """
+Current Stage: {candidate_row.get('pipeline_stage','')}
+"""
             )
+
             job_title = st.text_input("Job title")
             company = st.text_input("Company")
             interview_date = st.date_input("Interview date")
@@ -1138,20 +1226,37 @@ elif menu == "Interview Scheduler":
 
             if st.button("Save interview", width="stretch"):
                 if job_title.strip() and company.strip():
-                    add_interview(
-                        candidate_id=candidate_id,
-                        candidate_name=str(candidate_row.get("name", "")),
-                        candidate_email=str(candidate_row.get("email", "")),
-                        job_title=job_title,
-                        company=company,
-                        interview_date=interview_date,
-                        interview_time=interview_time,
-                        interview_type=interview_type,
-                        notes=notes
-                    )
+                    try:
+                        result = add_interview_supabase(
+                            candidate_id=candidate_id,
+                            candidate_name=str(candidate_row.get("name", "")),
+                            candidate_email=str(candidate_row.get("email", "")),
+                            job_title=job_title,
+                            company=company,
+                            interview_date=interview_date,
+                            interview_time=interview_time,
+                            interview_type=interview_type,
+                            notes=notes
+                        )
 
-                    st.success("Interview scheduled successfully.")
-                    st.rerun()
+                        add_timeline_event_supabase(
+                            candidate_id=candidate_id,
+                            event_date=interview_date,
+                            event_type="Interview Scheduled",
+                            notes=f"{interview_type} interview for {job_title} at {company}."
+                        )
+
+                        update_candidate_stage_supabase(
+                            candidate_id,
+                            "Interview Scheduled"
+                        )
+
+                        st.success("Interview scheduled successfully.")
+                        st.dataframe(pd.DataFrame(result))
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"Error saving interview: {e}")
                 else:
                     st.warning("Job title and company are required.")
 
@@ -1169,83 +1274,85 @@ elif menu == "Interview Scheduler":
                 hide_index=True
             )
 
-            interview_options = (
-                interviews["candidate_name"].astype(str)
-                + " - "
-                + interviews["job_title"].astype(str)
-                + " — ID "
-                + interviews["id"].astype(str)
-            )
-
-            selected_interview = st.selectbox(
-                "Select interview to delete",
-                interview_options
-            )
-
-            interview_id = int(float(selected_interview.split("ID ")[1]))
-
-            confirm = st.checkbox("I confirm delete this interview")
-
-            if st.button("Delete interview"):
-                if confirm:
-                    delete_interview(interview_id)
-                    st.success("Interview deleted successfully.")
-                    st.rerun()
-                else:
-                    st.warning("Please confirm first.")
-
-            st.markdown("### Generate Interview Invitation Email")
-
-            selected_email_interview = st.selectbox(
-                "Select interview for email",
-                interview_options,
-                key="interview_email_select"
-            )
-
-            email_interview_id = int(float(selected_email_interview.split("ID ")[1]))
-
-            email_interview_row = interviews[
-                interviews["id"].astype(float).astype(int) == email_interview_id
-            ].iloc[0]
-
-            if "generated_interview_email" not in st.session_state:
-                st.session_state.generated_interview_email = ""
-
-            if st.button("Generate invitation email", width="stretch"):
-                email_text = generate_interview_invitation_email(
-                    candidate_name=str(email_interview_row.get("candidate_name", "")),
-                    candidate_email=str(email_interview_row.get("candidate_email", "")),
-                    job_title=str(email_interview_row.get("job_title", "")),
-                    company=str(email_interview_row.get("company", "")),
-                    interview_date=str(email_interview_row.get("interview_date", "")),
-                    interview_time=str(email_interview_row.get("interview_time", "")),
-                    interview_type=str(email_interview_row.get("interview_type", "")),
-                    notes=str(email_interview_row.get("notes", ""))
+            if "id" in interviews.columns:
+                interview_options = (
+                    interviews["candidate_name"].astype(str)
+                    + " - "
+                    + interviews["job_title"].astype(str)
+                    + " — ID "
+                    + interviews["id"].astype(float).astype(int).astype(str)
                 )
 
-                st.session_state.generated_interview_email = email_text
-                st.success("Interview invitation email generated.")
-
-            if st.session_state.generated_interview_email:
-                email_text = st.text_area(
-                    "Generated Email",
-                    st.session_state.generated_interview_email,
-                    height=320
+                selected_interview = st.selectbox(
+                    "Select interview to delete",
+                    interview_options
                 )
 
-                subject = f"Interview Invitation - {email_interview_row.get('job_title', '')}"
+                interview_id = int(float(selected_interview.split("ID ")[1]))
 
-                if st.button("Send email to candidate", width="stretch"):
-                    success, message = send_email(
-                        to_email=str(email_interview_row.get("candidate_email", "")),
-                        subject=subject,
-                        body=email_text
+                confirm = st.checkbox("I confirm delete this interview")
+
+                if st.button("Delete interview"):
+                    if confirm:
+                        delete_interview_supabase(interview_id)
+                        st.success("Interview deleted successfully.")
+                        st.rerun()
+                    else:
+                        st.warning("Please confirm first.")
+
+                st.markdown("### Generate Interview Invitation Email")
+
+                selected_email_interview = st.selectbox(
+                    "Select interview for email",
+                    interview_options,
+                    key="interview_email_select"
+                )
+
+                email_interview_id = int(float(selected_email_interview.split("ID ")[1]))
+
+                email_interview_row = interviews[
+                    interviews["id"].astype(float).astype(int) == email_interview_id
+                ].iloc[0]
+
+                if "generated_interview_email" not in st.session_state:
+                    st.session_state.generated_interview_email = ""
+
+                if st.button("Generate invitation email", width="stretch"):
+                    email_text = generate_interview_invitation_email(
+                        candidate_name=str(email_interview_row.get("candidate_name", "")),
+                        candidate_email=str(email_interview_row.get("candidate_email", "")),
+                        job_title=str(email_interview_row.get("job_title", "")),
+                        company=str(email_interview_row.get("company", "")),
+                        interview_date=str(email_interview_row.get("interview_date", "")),
+                        interview_time=str(email_interview_row.get("interview_time", "")),
+                        interview_type=str(email_interview_row.get("interview_type", "")),
+                        notes=str(email_interview_row.get("notes", ""))
                     )
 
-                    if success:
-                        st.success(message)
-                    else:
-                        st.error(message)
+                    st.session_state.generated_interview_email = email_text
+                    st.success("Interview invitation email generated.")
+
+                if st.session_state.generated_interview_email:
+                    email_text = st.text_area(
+                        "Generated Email",
+                        st.session_state.generated_interview_email,
+                        height=320
+                    )
+
+                    subject = f"Interview Invitation - {email_interview_row.get('job_title', '')}"
+
+                    if st.button("Send email to candidate", width="stretch"):
+                        success, message = send_email(
+                            to_email=str(email_interview_row.get("candidate_email", "")),
+                            subject=subject,
+                            body=email_text
+                        )
+
+                        if success:
+                            st.success(message)
+                        else:
+                            st.error(message)
+
 elif menu == "ATS Score":
     st.markdown('<div class="section-title">ATS Score Calculator</div>', unsafe_allow_html=True)
 
@@ -1364,14 +1471,19 @@ elif menu == "ATS Score":
                 st.warning("Please upload a resume PDF first.")
 
 elif menu == "Candidate Matching":
-    st.markdown('<div class="section-title">Candidate Matching</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="section-title">Candidate Matching</div>',
+        unsafe_allow_html=True
+    )
 
     search_job_match = st.text_input(
         "Search job by name or title",
         placeholder="Example: Software Engineer, Python Developer, Teacher..."
     )
 
-    search_matching_online = st.button("Search online job offers for matching")
+    search_matching_online = st.button(
+        "Search online job offers for matching"
+    )
 
     if search_matching_online and search_job_match.strip():
         jobs_for_matching = fetch_online_jobs(
@@ -1385,31 +1497,45 @@ elif menu == "Candidate Matching":
             search_text = search_job_match.lower()
 
             jobs_for_matching = jobs_for_matching[
-                jobs_for_matching["job_title"].astype(str).str.lower().str.contains(search_text, na=False)
+                jobs_for_matching["job_title"].astype(str).str.lower().str.contains(
+                    search_text,
+                    na=False
+                )
                 |
-                jobs_for_matching["company"].astype(str).str.lower().str.contains(search_text, na=False)
+                jobs_for_matching["company"].astype(str).str.lower().str.contains(
+                    search_text,
+                    na=False
+                )
                 |
-                jobs_for_matching["required_skills"].astype(str).str.lower().str.contains(search_text, na=False)
+                jobs_for_matching["required_skills"].astype(str).str.lower().str.contains(
+                    search_text,
+                    na=False
+                )
             ]
 
     if jobs_for_matching.empty:
-        st.warning("No job offers found. Try another keyword or use online search.")
+        st.warning(
+            "No job offers found. Try another keyword or use online search."
+        )
+
     else:
+
         job_options = (
             jobs_for_matching["company"].astype(str)
             + " - "
             + jobs_for_matching["job_title"].astype(str)
             + " — ID "
-            + jobs_for_matching["id"].astype(str)
+            + jobs_for_matching["id"].astype(float).astype(int).astype(str)
         )
 
-        selected_job = st.selectbox("Select Job Offer", job_options)
+        selected_job = st.selectbox(
+            "Select Job Offer",
+            job_options
+        )
 
-        selected_job_id = int(float(selected_job.split("ID ")[1]))
-
-        job = jobs_for_matching[
-            jobs_for_matching["id"].astype(float).astype(int) == selected_job_id
-        ].iloc[0]
+        selected_job_id = int(
+            float(selected_job.split("ID ")[1])
+        )
 
         job, matches = match_candidates(
             selected_job_id,
@@ -1417,27 +1543,61 @@ elif menu == "Candidate Matching":
             jobs_for_matching
         )
 
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div class="card">
-            <h3>{job['company']} - {job['job_title']}</h3>
-            <p><b>Country:</b> {job['country']}</p>
-            <p><b>Required Skills:</b> {job['required_skills']}</p>
-            <p><b>Experience Required:</b> {job['experience_required']} years</p>
-            <p><b>Language Required:</b> {job['language_required']}</p>
-            <p><b>Salary Range:</b> {job['salary_range']}</p>
+            <h3>{job.get('company','')} - {job.get('job_title','')}</h3>
+            <p><b>Country:</b> {job.get('country','Not specified')}</p>
+            <p><b>Required Skills:</b> {job.get('required_skills','Not specified')}</p>
+            <p><b>Experience Required:</b> {job.get('experience_required',0)} years</p>
+            <p><b>Language Required:</b> {job.get('language_required','Not specified')}</p>
+            <p><b>Salary Range:</b> {job.get('salary_range','Not specified')}</p>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True
+        )
 
         st.markdown("### Ranked Candidates")
 
         if matches.empty:
             st.warning("No matching candidates found.")
+
         else:
-            st.dataframe(matches, width="stretch", hide_index=True)
 
-            chart_data = matches[["candidate_name", "match_score"]].set_index("candidate_name")
-            st.bar_chart(chart_data)
+            st.dataframe(
+                matches,
+                width="stretch",
+                hide_index=True
+            )
 
+            st.markdown("### Top 10 Candidates")
+
+            top_candidates = matches.head(10)
+
+            st.bar_chart(
+                top_candidates.set_index(
+                    "candidate_name"
+                )["match_score"]
+            )
+
+            st.markdown("### Best Candidate")
+
+            best_candidate = matches.iloc[0]
+
+            st.success(
+                f"""
+                Best Match: {best_candidate['candidate_name']}
+
+                Match Score: {best_candidate['match_score']}%
+
+                Country: {best_candidate['country']}
+
+                Experience: {best_candidate['experience_years']} years
+
+                Matched Skills:
+                {best_candidate['matched_skills']}
+                """
+            )
 elif menu == "AI Interview Questions":
 
     st.markdown(
@@ -1921,11 +2081,16 @@ elif menu == "Client Communication Agent":
 
         clients = get_clients_supabase()
 
-        st.dataframe(
-            clients,
-            width="stretch",
-            hide_index=True
-        )
+        st.write("Number of clients:", len(clients))
+
+        if clients.empty:
+            st.warning("No clients found in Supabase")
+        else:
+            st.dataframe(
+                clients,
+                use_container_width=True,
+                hide_index=True
+            )
 
     with tab4:
         st.subheader("Manage clients")
@@ -1934,72 +2099,160 @@ elif menu == "Client Communication Agent":
 
         action = st.selectbox(
             "Action",
-            ["Add client", "Edit client", "Delete client"]
+            ["Add client", "Edit client", "Delete client"],
+            key="client_action"
         )
 
         if action == "Add client":
-            name = st.text_input("Client name")
-            service = st.text_input("Service")
-            deadline = st.date_input("Deadline")
-            status = st.selectbox("Status", ["Pending", "In Progress", "Delayed", "Completed"])
+            name = st.text_input("Client name", key="add_client_name")
+            service = st.text_input("Service", key="add_client_service")
+            deadline = st.date_input("Deadline", key="add_client_deadline")
 
-            if st.button("Save client"):
-                if name.strip() and service.strip():
-                    add_client(name, service, str(deadline), status)
-                    st.success("Client added successfully.")
-                    st.rerun()
-                else:
-                    st.warning("Client name and service are required.")
+            status = st.selectbox(
+                "Status",
+                ["Pending", "In Progress", "Delayed", "Completed"],
+                key="add_client_status"
+            )
+
+            if st.button("Save client", key="save_client_btn"):
+                    if name.strip() and service.strip():
+                        try:
+                            add_client_supabase(
+                                name=name,
+                                service=service,
+                                deadline=str(deadline),
+                                status=status
+                            )
+
+                            st.success("Client saved successfully. Go to Client Records to verify it.")
+
+                        except Exception as e:
+                            st.error(f"Error saving client: {e}")
+                    else:
+                        st.warning("Client name and service are required.")
 
         elif action == "Edit client":
             if clients.empty:
                 st.warning("No clients available to edit.")
             else:
-                candidate_options = candidates["name"].astype(str) + " — ID " + candidates["id"].astype(str)
-
-                selected_candidate_client = st.selectbox(
-                    "Select candidate",
-                    candidate_options
+                client_options = (
+                    clients["name"].astype(str)
+                    + " - "
+                    + clients["service"].astype(str)
+                    + " — ID "
+                    + clients["id"].astype(float).astype(int).astype(str)
                 )
 
-                candidate_id = int(float(selected_candidate_client.split("ID ")[1]))
+                selected_client_edit = st.selectbox(
+                    "Select client to edit",
+                    client_options,
+                    key="edit_client_select"
+                )
 
-                candidate_client = candidates[
-                    candidates["id"].astype(float).astype(int) == candidate_id
+                client_id = int(float(selected_client_edit.split("ID ")[1]))
+
+                client_row = clients[
+                    clients["id"].astype(float).astype(int) == client_id
                 ].iloc[0]
 
-                client_name = st.text_input("Client Name", value=str(candidate_client["name"]))
-                service_type = st.text_input("Service Type", value="Recruitment / Job application support")
-                original_deadline = st.text_input("Original Deadline", value="")
+                edit_name = st.text_input(
+                    "Client name",
+                    value=str(client_row.get("name", "")),
+                    key="edit_client_name"
+                )
+
+                edit_service = st.text_input(
+                    "Service",
+                    value=str(client_row.get("service", "")),
+                    key="edit_client_service"
+                )
+
+                edit_deadline = st.date_input(
+                    "Deadline",
+                    key="edit_client_deadline"
+                )
 
                 status_options = ["Pending", "In Progress", "Delayed", "Completed"]
 
                 edit_status = st.selectbox(
                     "Status",
                     status_options,
-                    index=status_options.index(client_row["status"])
-                    if str(client_row["status"]) in status_options else 0
+                    index=status_options.index(str(client_row.get("status", "Pending")))
+                    if str(client_row.get("status", "Pending")) in status_options else 0,
+                    key="edit_client_status"
                 )
 
-                if st.button("Update client"):
-                    update_client(client_id, edit_name, edit_service, edit_deadline, edit_status)
+                if st.button("Update client", key="update_client_btn"):
+                    update_client_supabase(
+                        client_id,
+                        edit_name,
+                        edit_service,
+                        str(edit_deadline),
+                        edit_status
+                    )
+
                     st.success("Client updated successfully.")
                     st.rerun()
+                elif action == "Delete client":
+                    if clients.empty:
+                        st.warning("No clients available to delete.")
+                    else:
+                        client_options = (
+                            clients["name"].astype(str)
+                            + " - "
+                            + clients["service"].astype(str)
+                            + " — ID "
+                            + clients["id"].astype(float).astype(int).astype(str)
+                        )
+
+                        selected_client = st.selectbox(
+                            "Select client to delete",
+                            client_options,
+                            key="delete_client_select"
+                        )
+
+                        client_id = int(float(selected_client.split("ID ")[1]))
+
+                        confirm = st.checkbox(
+                            "I confirm delete",
+                            key="confirm_delete_client"
+                        )
+
+                        if st.button("Delete client", key="delete_client_btn"):
+                            if confirm:
+                                delete_client_supabase(client_id)
+                                st.success("Client deleted successfully.")
+                            else:
+                                st.warning("Please confirm first.")
 
         elif action == "Delete client":
             if clients.empty:
                 st.warning("No clients available to delete.")
             else:
-                client_options = clients["name"].astype(str) + " — ID " + clients["id"].astype(str)
-                selected_client = st.selectbox("Select client to delete", client_options)
+                client_options = (
+                    clients["name"].astype(str)
+                    + " - "
+                    + clients["service"].astype(str)
+                    + " — ID "
+                    + clients["id"].astype(float).astype(int).astype(str)
+                )
+
+                selected_client = st.selectbox(
+                    "Select client to delete",
+                    client_options,
+                    key="delete_client_select"
+                )
 
                 client_id = int(float(selected_client.split("ID ")[1]))
 
-                confirm = st.checkbox("I confirm delete")
+                confirm = st.checkbox(
+                    "I confirm delete",
+                    key="confirm_delete_client"
+                )
 
-                if st.button("Delete client"):
+                if st.button("Delete client", key="delete_client_btn"):
                     if confirm:
-                        delete_client(client_id)
+                        delete_client_supabase(client_id)
                         st.success("Client deleted successfully.")
                         st.rerun()
                     else:

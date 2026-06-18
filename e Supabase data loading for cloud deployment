@@ -1,0 +1,5 @@
+[33m086cbe6[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Add Supabase integration and candidate pipeline management
+[33m9f8897a[m Add Streamlit Cloud secrets support
+[33mec6bb5c[m Update README with TalentBridge features
+[33m9638723[m Add candidate timeline, pipeline management and analytics dashboard
+[33mde99544[m Add AI interview module and email automation

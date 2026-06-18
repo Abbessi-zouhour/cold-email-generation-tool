@@ -1,43 +1,52 @@
+import re
 import pandas as pd
 
-def calculate_match_score(candidate_skills, required_skills):
-    candidate_skills = set(s.strip().lower() for s in candidate_skills.split(","))
-    required_skills = set(s.strip().lower() for s in required_skills.split(","))
 
-    matched_skills = candidate_skills.intersection(required_skills)
+def clean_skills(text):
+    text = str(text).lower()
+    parts = re.split(r"[,|/;-]+", text)
+    return set(p.strip() for p in parts if p.strip())
 
-    if len(required_skills) == 0:
-        score = 0
+
+def calculate_match_score(candidate, job):
+    candidate_skills = clean_skills(candidate.get("skills", ""))
+    required_skills = clean_skills(job.get("required_skills", ""))
+
+    if not required_skills:
+        skill_score = 0
+        matched_skills = set()
     else:
-        score = int((len(matched_skills) / len(required_skills)) * 100)
+        matched_skills = candidate_skills.intersection(required_skills)
+        skill_score = (len(matched_skills) / len(required_skills)) * 70
 
-    return score, list(matched_skills)
+    candidate_exp = int(candidate.get("experience_years", 0) or 0)
+    required_exp = int(job.get("experience_required", 0) or 0)
+
+    exp_score = 20 if candidate_exp >= required_exp else min(candidate_exp * 5, 20)
+
+    country_score = 10 if str(candidate.get("country", "")).lower() in str(job.get("country", "")).lower() else 0
+
+    total = skill_score + exp_score + country_score
+
+    return round(min(total, 100), 2), list(matched_skills)
 
 
 def match_candidates(job_id, candidates, jobs):
-    job = jobs[jobs["id"] == job_id].iloc[0]
+    job = jobs[jobs["id"].astype(float).astype(int) == int(job_id)].iloc[0]
     results = []
 
     for _, candidate in candidates.iterrows():
-        score, matched_skills = calculate_match_score(
-            candidate["skills"],
-            job["required_skills"]
-        )
-
-        if candidate["experience_years"] >= job["experience_required"]:
-            score += 10
-
-        score = min(score, 100)
+        score, matched_skills = calculate_match_score(candidate, job)
 
         results.append({
-            "candidate_name": candidate["name"],
-            "email": candidate["email"],
-            "country": candidate["country"],
-            "experience_years": candidate["experience_years"],
-            "skills": candidate["skills"],
+            "candidate_name": candidate.get("name", ""),
+            "email": candidate.get("email", ""),
+            "country": candidate.get("country", ""),
+            "experience_years": candidate.get("experience_years", 0),
+            "skills": candidate.get("skills", ""),
             "matched_skills": ", ".join(matched_skills),
             "match_score": score,
-            "status": candidate["status"]
+            "status": candidate.get("status", "")
         })
 
     return job, pd.DataFrame(results).sort_values("match_score", ascending=False)

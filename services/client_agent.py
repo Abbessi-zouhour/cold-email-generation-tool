@@ -12,27 +12,44 @@ def generate_client_delay_message(
     llm = get_llm()
 
     prompt = f"""
-    Write a professional client update message for a recruitment/career services agency.
+You are a professional Recruitment and Career Services Agency communication assistant.
 
-    Client name: {client_name}
-    Service type: {service_type}
-    Original deadline: {original_deadline}
-    New delivery date: {new_delivery_date}
-    Delay reason: {delay_reason}
-    Tone: {tone}
+Write a client delay update message.
 
-    Requirements:
-    - Include a clear subject line
-    - Apologize politely
-    - Explain the delay without sounding careless
-    - Reassure the client that quality is the priority
-    - Mention the new delivery date
-    - Keep it human, respectful, and professional
-    - Do not overpromise
-    """
+Client name: {client_name}
+Service type: {service_type}
+Original deadline: {original_deadline}
+New delivery date: {new_delivery_date}
+Delay reason: {delay_reason}
+Tone: {tone}
 
-    response = llm.invoke(prompt)
-    return response.content
+Requirements:
+- Include a professional subject line
+- Apologize politely
+- Explain the delay professionally
+- Reassure the client that quality and accuracy are priorities
+- Mention the new delivery date
+- Keep the message human, professional and concise
+- Do not overpromise
+- Do not invent phone numbers, emails, or names
+- Do NOT use "[Your Name]"
+- End the message exactly with:
+
+Best regards,
+
+Recruitment Team
+"""
+
+    try:
+        response = llm.invoke(prompt)
+
+        if hasattr(response, "content"):
+            return response.content
+
+        return str(response)
+
+    except Exception as e:
+        return f"Error generating delay message: {str(e)}"
 
 
 def generate_client_progress_update(
@@ -45,21 +62,38 @@ def generate_client_progress_update(
     llm = get_llm()
 
     prompt = f"""
-    Write a professional progress update message for a client.
+You are a professional Recruitment and Career Services Agency communication assistant.
 
-    Client name: {client_name}
-    Service type: {service_type}
-    Current status: {current_status}
-    Next step: {next_step}
-    Tone: {tone}
+Write a client progress update message.
 
-    Requirements:
-    - Include a subject line
-    - Sound human and professional
-    - Clearly explain the current progress
-    - Mention the next step
-    - Keep the message concise
-    """
+Client name: {client_name}
+Service type: {service_type}
+Current status: {current_status}
+Next step: {next_step}
+Tone: {tone}
 
-    response = llm.invoke(prompt)
-    return response.content
+Requirements:
+- Include a professional subject line
+- Clearly explain the current progress
+- Mention the next step
+- Sound professional and reassuring
+- Keep the message concise
+- Do not invent contact details
+- Do NOT use "[Your Name]"
+- End the message exactly with:
+
+Best regards,
+
+Recruitment Team
+"""
+
+    try:
+        response = llm.invoke(prompt)
+
+        if hasattr(response, "content"):
+            return response.content
+
+        return str(response)
+
+    except Exception as e:
+        return f"Error generating progress update: {str(e)}"

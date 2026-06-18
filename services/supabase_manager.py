@@ -207,3 +207,78 @@ def get_interviews_supabase():
     )
 
     return to_dataframe(response)
+def add_interview_supabase(
+    candidate_id,
+    candidate_name,
+    candidate_email,
+    job_title,
+    company,
+    interview_date,
+    interview_time,
+    interview_type,
+    notes,
+    status="Scheduled"
+):
+    response = (
+        supabase.table("interviews")
+        .insert({
+            "candidate_id": int(candidate_id),
+            "candidate_name": candidate_name,
+            "candidate_email": candidate_email,
+            "job_title": job_title,
+            "company": company,
+            "interview_date": str(interview_date),
+            "interview_time": str(interview_time),
+            "interview_type": interview_type,
+            "notes": notes,
+            "status": status
+        })
+        .execute()
+    )
+    return response.data
+
+def delete_interview_supabase(interview_id):
+    response = (
+        supabase.table("interviews")
+        .delete()
+        .eq("id", int(interview_id))
+        .execute()
+    )
+    return response.data
+def add_client_supabase(name, service, deadline, status):
+    response = (
+        supabase.table("clients")
+        .insert({
+            "name": name,
+            "service": service,
+            "deadline": str(deadline),
+            "status": status
+        })
+        .execute()
+    )
+    return response.data
+
+
+def update_client_supabase(client_id, name, service, deadline, status):
+    response = (
+        supabase.table("clients")
+        .update({
+            "name": name,
+            "service": service,
+            "deadline": str(deadline),
+            "status": status
+        })
+        .eq("id", int(client_id))
+        .execute()
+    )
+    return response.data
+
+
+def delete_client_supabase(client_id):
+    response = (
+        supabase.table("clients")
+        .delete()
+        .eq("id", int(client_id))
+        .execute()
+    )
+    return response.data

@@ -33,7 +33,13 @@ The email must include:
 - Confirmation request
 - Polite closing
 
-Do not invent contact details.
+The email must end with exactly:
+
+Best regards,
+
+Recruitment Team
+
+Do not invent contact details, names, phone numbers, websites, or signatures. invent contact details.
 """
 
     try:
