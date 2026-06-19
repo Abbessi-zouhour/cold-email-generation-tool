@@ -4,6 +4,7 @@ from pathlib import Path
 from PIL import Image
 from datetime import date
 
+
 from services.candidate_matcher import match_candidates
 from services.email_generator import generate_email
 from services.job_analyzer import analyze_job_offer
@@ -69,6 +70,7 @@ from services.supabase_manager import (
     delete_client_supabase
 )
 from services.supabase_client import supabase
+from services.auth import login
 
 BASE_DIR = Path(__file__).parent
 LOGO_PATH = BASE_DIR / "assets" / "images" / "logo.png"
@@ -80,6 +82,8 @@ st.set_page_config(
     page_icon=logo_icon,
     layout="wide"
 )
+if not login(LOGO_PATH if LOGO_PATH.exists() else None):
+    st.stop()
 
 
 def load_css():
