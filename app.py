@@ -87,6 +87,24 @@ from services.candidate_notes import (
     add_candidate_note,
     delete_candidate_note
 )
+from services.crm_manager import (
+    get_crm_companies,
+    add_crm_company,
+    update_crm_company,
+    delete_crm_company,
+    get_crm_contacts,
+    add_crm_contact,
+    delete_crm_contact,
+    get_crm_followups,
+    add_crm_followup,
+    update_crm_followup_status,
+    delete_crm_followup
+)
+from services.ai_ranking import (
+    generate_candidate_ranking,
+    get_candidate_rankings,
+    delete_candidate_ranking
+)
 
 BASE_DIR = Path(__file__).parent
 LOGO_PATH = BASE_DIR / "assets" / "images" / "logo.png"
@@ -115,6 +133,8 @@ load_css()
 ROLE_PERMISSIONS = {
     "Admin": [
         "Dashboard",
+        "Recruitment CRM",
+        "AI Candidate Ranking",
         "Job Offers",
         "Candidates",
         "Candidate Profile",
@@ -134,6 +154,8 @@ ROLE_PERMISSIONS = {
     ],
     "Recruiter": [
         "Dashboard",
+        "Recruitment CRM",
+        "AI Candidate Ranking",
         "Job Offers",
         "Candidates",
         "Candidate Profile",
@@ -146,6 +168,8 @@ ROLE_PERMISSIONS = {
     ],
     "Manager": [
         "Dashboard",
+        "Recruitment CRM",
+        "AI Candidate Ranking",
         "Candidate Matching",
         "Candidate Pipeline",
         "Interview Scorecard",
@@ -470,6 +494,196 @@ if menu == "Dashboard":
         st.info("No interviews scheduled.")
     st.write("Supabase candidates test")
     st.dataframe(get_candidates_supabase().head())
+elif menu == "Recruitment CRM":
+    st.markdown('<div class="section-title">Recruitment CRM</div>', unsafe_allow_html=True)
+
+    companies = get_crm_companies()
+
+    tab1, tab2, tab3 = st.tabs([
+        "Companies",
+        "Contacts",
+        "Follow-ups"
+    ])
+
+    with tab1:
+        st.subheader("Companies")
+
+        if companies:
+            st.dataframe(companies, use_container_width=True, hide_index=True)
+        else:
+            st.info("No companies found.")
+
+        st.markdown("### Add company")
+
+        company_name = st.text_input("Company name")
+        industry = st.text_input("Industry")
+        country = st.text_input("Country")
+        website = st.text_input("Website")
+        status = st.selectbox("Status", ["Prospect", "Contacted", "Client", "Inactive"])
+        owner = st.session_state.get("username", "Unknown")
+
+        if st.button("Save Company", use_container_width=True, key="save_crm_company"):
+            if not company_name.strip():
+                st.warning("Company name is required.")
+            else:
+                add_crm_company(company_name, industry, country, website, status, owner)
+                st.success("Company saved successfully.")
+                st.rerun()
+
+    with tab2:
+        st.subheader("Contacts")
+
+        if not companies:
+            st.warning("Please add a company first.")
+        else:
+            company_options = [
+                f"{c['company_name']} — ID {c['id']}"
+                for c in companies
+            ]
+
+            selected_company = st.selectbox("Select company", company_options)
+            company_id = int(selected_company.split("ID ")[1])
+
+            contacts = get_crm_contacts(company_id)
+
+            if contacts:
+                st.dataframe(contacts, use_container_width=True, hide_index=True)
+            else:
+                st.info("No contacts for this company.")
+
+            st.markdown("### Add contact")
+
+            full_name = st.text_input("Full name")
+            job_title = st.text_input("Job title")
+            email = st.text_input("Email")
+            phone = st.text_input("Phone")
+            linkedin = st.text_input("LinkedIn")
+
+            if st.button("Save Contact", use_container_width=True, key="save_crm_contact"):
+                if not full_name.strip():
+                    st.warning("Contact name is required.")
+                else:
+                    add_crm_contact(company_id, full_name, job_title, email, phone, linkedin)
+                    st.success("Contact saved successfully.")
+                    st.rerun()
+
+    with tab3:
+        st.subheader("Follow-ups")
+
+        if not companies:
+            st.warning("Please add a company first.")
+        else:
+            company_options_fu = [
+                f"{c['company_name']} — ID {c['id']}"
+                for c in companies
+            ]
+
+            selected_company_fu = st.selectbox("Select company for follow-up", company_options_fu)
+            company_id_fu = int(selected_company_fu.split("ID ")[1])
+
+            contacts_fu = get_crm_contacts(company_id_fu)
+            followups = get_crm_followups(company_id_fu)
+
+            if followups:
+                st.dataframe(followups, use_container_width=True, hide_index=True)
+            else:
+                st.info("No follow-ups for this company.")
+
+            st.markdown("### Add follow-up")
+
+            contact_options = ["No contact"] + [
+                f"{c['full_name']} — ID {c['id']}"
+                for c in contacts_fu
+            ]
+
+            selected_contact = st.selectbox("Contact", contact_options)
+
+            contact_id = None
+            if selected_contact != "No contact":
+                contact_id = int(selected_contact.split("ID ")[1])
+
+            followup_type = st.selectbox("Type", ["Email", "Call", "Meeting", "WhatsApp", "Other"])
+            notes = st.text_area("Notes")
+            followup_date = st.date_input("Follow-up date")
+            followup_status = st.selectbox("Status", ["Pending", "Completed", "Cancelled"])
+
+            if st.button("Save Follow-up", use_container_width=True, key="save_crm_followup"):
+                if not notes.strip():
+                    st.warning("Follow-up notes are required.")
+                else:
+                    add_crm_followup(
+                        company_id_fu,
+                        contact_id,
+                        followup_type,
+                        notes,
+                        followup_date,
+                        followup_status,
+                        st.session_state.get("username", "Unknown")
+                    )
+                    st.success("Follow-up saved successfully.")
+                    st.rerun()
+elif menu == "AI Candidate Ranking":
+    st.markdown('<div class="section-title">AI Candidate Ranking</div>', unsafe_allow_html=True)
+
+    candidates = get_candidates_supabase()
+    jobs = get_jobs_supabase()
+
+    if candidates.empty:
+        st.warning("No candidates found.")
+        st.stop()
+
+    if jobs.empty:
+        st.warning("No jobs found.")
+        st.stop()
+
+    job_options = (
+        jobs["company"].astype(str)
+        + " - "
+        + jobs["job_title"].astype(str)
+        + " — ID "
+        + jobs["id"].astype(float).astype(int).astype(str)
+    ).tolist()
+
+    selected_job = st.selectbox("Select job for ranking", job_options)
+
+    selected_job_id = int(float(selected_job.split("ID ")[1]))
+
+    if st.button("Generate AI Ranking", use_container_width=True):
+        with st.spinner("Ranking candidates..."):
+            job, top_matches, saved_rankings = generate_candidate_ranking(
+                job_id=selected_job_id,
+                candidates=candidates,
+                jobs=jobs,
+                created_by=st.session_state.get("username", "Unknown")
+            )
+
+        st.success("Candidate ranking generated and saved.")
+
+        st.markdown("### Selected Job")
+        st.info(
+            f"""
+Job: {job.get("job_title", "")}
+
+Company: {job.get("company", "")}
+
+Required Skills: {job.get("required_skills", "")}
+"""
+        )
+
+        st.markdown("### Top Ranked Candidates")
+        st.dataframe(top_matches, use_container_width=True, hide_index=True)
+
+    st.divider()
+
+    st.subheader("Saved Rankings")
+
+    rankings = get_candidate_rankings()
+
+    if rankings:
+        st.dataframe(rankings, use_container_width=True, hide_index=True)
+    else:
+        st.info("No rankings saved yet.")
+        
 elif menu == "Job Offers":
     st.markdown('<div class="section-title">Job Offers</div>', unsafe_allow_html=True)
 
