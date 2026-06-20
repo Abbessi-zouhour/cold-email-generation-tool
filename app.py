@@ -82,6 +82,12 @@ from services.supabase_manager import (
 from services.supabase_client import supabase
 from services.auth import login
 
+from services.candidate_notes import (
+    get_candidate_notes,
+    add_candidate_note,
+    delete_candidate_note
+)
+
 BASE_DIR = Path(__file__).parent
 LOGO_PATH = BASE_DIR / "assets" / "images" / "logo.png"
 
@@ -611,208 +617,22 @@ elif menu == "Job Offers":
                 st.markdown(f"- [{job_title} — {company}]({link})")
             else:
                 st.markdown(f"- {job_title} — {company} *(no link available)*")
+
 elif menu == "Candidates":
+    st.markdown('<div class="section-title">Candidates</div>', unsafe_allow_html=True)
 
-    st.markdown(
-        '<div class="section-title">Candidates</div>',
-        unsafe_allow_html=True
-    )
+    candidates = get_candidates_supabase()
 
-    tab1, tab2, tab3, tab4 = st.tabs([
-        "Add candidate",
-        "Edit candidate",
-        "Delete candidate",
-        "View candidates"
-    ])
+    st.write("Candidates loaded:", len(candidates))
 
-    # ==========================
-    # ADD CANDIDATE
-    # ==========================
-    with tab1:
-
-        st.subheader("Add new candidate")
-
-        name = st.text_input("Name")
-        email = st.text_input("Email")
-        phone = st.text_input("Phone")
-        country = st.text_input("Country")
-
-        experience_years = st.number_input(
-            "Experience (years)",
-            min_value=0,
-            max_value=50,
-            value=0
+    if candidates.empty:
+        st.warning("No candidates found.")
+    else:
+        st.dataframe(
+            candidates,
+            use_container_width=True,
+            hide_index=True
         )
-
-        languages = st.text_input("Languages")
-        skills = st.text_area("Skills")
-
-        status = st.selectbox(
-            "Status",
-            [
-                "Available",
-                "Interviewing",
-                "Placed",
-                "Rejected"
-            ]
-        )
-
-        pipeline_stage = st.selectbox(
-            "Pipeline stage",
-            [
-                "Applied",
-                "Screening",
-                "Interview Scheduled",
-                "Client Review",
-                "Offer Sent",
-                "Hired",
-                "Rejected"
-            ]
-        )
-
-        if st.button("Save candidate", width="stretch"):
-
-            try:
-
-                result = add_candidate_supabase(
-                    name=name,
-                    email=email,
-                    phone=phone,
-                    country=country,
-                    experience_years=experience_years,
-                    languages=languages,
-                    skills=skills,
-                    status=status,
-                    pipeline_stage=pipeline_stage
-                )
-
-                if result:
-                    st.success(" Candidate saved successfully.")
-                    st.dataframe(pd.DataFrame(result))
-                else:
-                    st.warning("Candidate was not saved.")
-
-            except Exception as e:
-                st.error(f"Error saving candidate: {e}")
-
-    # ==========================
-    # EDIT CANDIDATE
-    # ==========================
-    with tab2:
-
-        candidates = get_candidates_supabase()
-
-        if candidates.empty:
-            st.warning("No candidates found.")
-        else:
-
-            candidate_options = (
-                candidates["name"].astype(str)
-                + " — ID "
-                + candidates["id"].astype(str)
-            )
-
-            selected = st.selectbox(
-                "Select candidate",
-                candidate_options
-            )
-
-            candidate_id = int(
-                selected.split("ID ")[1]
-            )
-
-            candidate = candidates[
-                candidates["id"] == candidate_id
-            ].iloc[0]
-
-            new_name = st.text_input(
-                "Name",
-                candidate["name"]
-            )
-
-            new_email = st.text_input(
-                "Email",
-                candidate["email"]
-            )
-
-            if st.button("Update candidate", width="stretch"):
-
-                try:
-
-                    supabase.table("candidates")\
-                        .update({
-                            "name": new_name,
-                            "email": new_email
-                        })\
-                        .eq("id", candidate_id)\
-                        .execute()
-
-                    st.success(" Candidate updated.")
-
-                except Exception as e:
-                    st.error(e)
-
-    # ==========================
-    # DELETE CANDIDATE
-    # ==========================
-    with tab3:
-
-        candidates = get_candidates_supabase()
-
-        if candidates.empty:
-            st.warning("No candidates found.")
-        else:
-
-            candidate_options = (
-                candidates["name"].astype(str)
-                + " — ID "
-                + candidates["id"].astype(str)
-            )
-
-            selected = st.selectbox(
-                "Candidate to delete",
-                candidate_options
-            )
-
-            candidate_id = int(
-                selected.split("ID ")[1]
-            )
-
-            if st.button("Delete candidate", width="stretch"):
-
-                try:
-
-                    supabase.table("candidates")\
-                        .delete()\
-                        .eq("id", candidate_id)\
-                        .execute()
-
-                    st.success(" Candidate deleted.")
-
-                except Exception as e:
-                    st.error(e)
-
-    # ==========================
-    # VIEW CANDIDATES
-    # ==========================
-    with tab4:
-
-        candidates = get_candidates_supabase()
-
-        if candidates.empty:
-            st.warning("No candidates found.")
-        else:
-
-            st.metric(
-                "Total candidates",
-                len(candidates)
-            )
-
-            st.dataframe(
-                candidates,
-                width="stretch"
-            )
-
 elif menu == "Candidate Profile":
     st.markdown('<div class="section-title">Candidate Profile</div>', unsafe_allow_html=True)
 
@@ -820,15 +640,18 @@ elif menu == "Candidate Profile":
 
     if candidates.empty:
         st.warning("No candidates found in Supabase.")
+
     elif "id" not in candidates.columns or "name" not in candidates.columns:
         st.error("Supabase candidates table must contain 'id' and 'name' columns.")
         st.write("Current columns:", list(candidates.columns))
+
     else:
         candidates = candidates.dropna(subset=["id", "name"])
         candidates = candidates[candidates["name"].astype(str).str.lower() != "nan"]
 
         if candidates.empty:
             st.warning("No valid candidates found.")
+
         else:
             candidate_options = (
                 candidates["name"].astype(str)
@@ -839,7 +662,7 @@ elif menu == "Candidate Profile":
             selected_candidate = st.selectbox(
                 "Select candidate",
                 candidate_options,
-                key="pipeline_selected_candidate"
+                key="profile_selected_candidate"
             )
 
             candidate_id = int(float(selected_candidate.split("ID ")[1]))
@@ -848,6 +671,7 @@ elif menu == "Candidate Profile":
 
             if candidate_df.empty:
                 st.warning("Candidate not found.")
+
             else:
                 candidate = candidate_df.iloc[0]
 
@@ -864,6 +688,63 @@ elif menu == "Candidate Profile":
                     <p><b>Skills:</b> {candidate.get("skills", "")}</p>
                 </div>
                 """, unsafe_allow_html=True)
+
+                st.divider()
+
+                st.subheader("Candidate Notes")
+
+                new_note = st.text_area(
+                    "Add note",
+                    key=f"note_text_{candidate_id}",
+                    placeholder="Write a note about this candidate..."
+                )
+
+                if st.button(
+                    "Save Note",
+                    use_container_width=True,
+                    key=f"save_note_{candidate_id}"
+                ):
+                    if not new_note.strip():
+                        st.warning("Please write a note first.")
+                    else:
+                        add_candidate_note(
+                            candidate_id=candidate_id,
+                            note=new_note,
+                            created_by=st.session_state.get("username", "Unknown")
+                        )
+
+                        st.success("Note saved successfully.")
+                        st.rerun()
+
+                notes = get_candidate_notes(candidate_id)
+
+                if notes:
+                    st.markdown("### Notes History")
+
+                    for note in notes:
+                        st.markdown(
+                            f"""
+                            <div class="card" style="margin-bottom:12px;">
+                                <p>{note.get("note", "")}</p>
+                                <p style="font-size:13px;color:#6B7280;">
+                                    By {note.get("created_by", "Unknown")}
+                                    · {note.get("created_at", "")}
+                                </p>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
+                        if st.button(
+                            "Delete Note",
+                            key=f"delete_note_{note['id']}"
+                        ):
+                            delete_candidate_note(note["id"])
+                            st.success("Note deleted.")
+                            st.rerun()
+
+                else:
+                    st.info("No notes yet for this candidate.")
 
 elif menu == "Candidate Pipeline":
     st.markdown(
