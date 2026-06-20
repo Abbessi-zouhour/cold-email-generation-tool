@@ -106,25 +106,50 @@ def load_css():
 load_css()
 
 
-menu_options = [
-    "Dashboard",
-    "Job Offers",
-    "Candidates",
-    "Candidate Profile",
-    "Candidate Matching",
-    "Candidate Pipeline",
-    "Candidate Timeline",
-    "Interview Scheduler",
-    "AI Interview Questions",
-    "Interview Scorecard",
-    "Email Generator",
-    "Job Analyzer",
-    "CV Parser",
-    "ATS Score",
-    "Cover Letter Generator",
-    "Client Communication Agent",
-    "AI Assistant"
-]
+ROLE_PERMISSIONS = {
+    "Admin": [
+        "Dashboard",
+        "Job Offers",
+        "Candidates",
+        "Candidate Profile",
+        "Candidate Matching",
+        "Candidate Pipeline",
+        "Candidate Timeline",
+        "Interview Scheduler",
+        "AI Interview Questions",
+        "Interview Scorecard",
+        "Email Generator",
+        "Job Analyzer",
+        "CV Parser",
+        "ATS Score",
+        "Cover Letter Generator",
+        "Client Communication Agent",
+        "AI Assistant"
+    ],
+    "Recruiter": [
+        "Dashboard",
+        "Job Offers",
+        "Candidates",
+        "Candidate Profile",
+        "Candidate Matching",
+        "Candidate Pipeline",
+        "Candidate Timeline",
+        "Interview Scheduler",
+        "Email Generator",
+        "AI Assistant"
+    ],
+    "Manager": [
+        "Dashboard",
+        "Candidate Matching",
+        "Candidate Pipeline",
+        "Interview Scorecard",
+        "Client Communication Agent"
+    ]
+}
+
+user_role = st.session_state.get("role", "Recruiter")
+
+menu_options = ROLE_PERMISSIONS.get(user_role, ROLE_PERMISSIONS["Recruiter"])
 
 if "page" not in st.session_state:
     st.session_state.page = "Dashboard"
@@ -213,6 +238,10 @@ if st.sidebar.button("Logout", use_container_width=True):
     st.session_state.page = "Dashboard"
     st.rerun()
 
+if st.session_state.page not in menu_options and st.session_state.page != "Settings":
+    st.warning("You do not have permission to access this page.")
+    st.session_state.page = "Dashboard"
+    st.rerun()
 # SQLite loading
 if uploaded_candidates is not None:
     candidates = pd.read_csv(uploaded_candidates)
