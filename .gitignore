@@ -1,9 +1,23 @@
 .streamlit/
 .env
+
 venv/
-__pycache__/
+.venv/
+env/
+
+**pycache**/
 *.pyc
+*.pyo
+*.pyd
+
 .vscode/
+.idea/
+
 database/*.db
+
+.DS_Store
+Thumbs.db
+
+*.log
 
 Project TalentBridge.txt

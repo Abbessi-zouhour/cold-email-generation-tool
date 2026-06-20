@@ -31,7 +31,16 @@ from database_manager import (
     delete_candidate,
 
 )
-from services.user_manager import get_user, update_password
+from services.user_manager import (
+    get_user,
+    update_password,
+    get_all_users,
+    create_user,
+    update_user,
+    delete_user,
+    username_exists
+)
+
 from services.interview_scheduler import (
     add_interview,
     get_interviews,
@@ -81,7 +90,8 @@ logo_icon = Image.open(LOGO_PATH) if LOGO_PATH.exists() else "TB"
 st.set_page_config(
     page_title="TalentBridge",
     page_icon=logo_icon,
-    layout="wide"
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 if not login(LOGO_PATH if LOGO_PATH.exists() else None):
     st.stop()
@@ -2292,7 +2302,6 @@ elif menu == "Client Communication Agent":
                         st.rerun()
                     else:
                         st.warning("Please confirm first.")
-    
 elif menu == "AI Assistant":
     st.markdown('<div class="section-title">AI Assistant</div>', unsafe_allow_html=True)
 
@@ -2325,8 +2334,7 @@ elif menu == "AI Assistant":
             "role": "assistant",
             "content": answer
         })
-if "page" not in st.session_state:
-    st.session_state.page = "Dashboard"
+
 
 elif st.session_state.page == "Settings":
     st.markdown('<div class="section-title">Settings</div>', unsafe_allow_html=True)
@@ -2352,15 +2360,18 @@ elif st.session_state.page == "Settings":
     new_password = st.text_input("New password", type="password")
     confirm_password = st.text_input("Confirm new password", type="password")
 
-    if st.button("Change password", use_container_width=True):
+    if st.button("Change password", use_container_width=True, key="settings_change_password_btn"):
         user = get_user(current_user, old_password)
 
         if not user:
             st.error("Current password is incorrect.")
+
         elif new_password != confirm_password:
             st.error("New passwords do not match.")
+
         elif len(new_password) < 8:
             st.warning("Password must contain at least 8 characters.")
+
         else:
             update_password(current_user, new_password)
 
@@ -2374,6 +2385,185 @@ elif st.session_state.page == "Settings":
 
     st.divider()
 
+    st.subheader("User Management")
+
+    if st.session_state.get("role") != "Admin":
+        st.warning("Only Admin users can manage accounts.")
+
+    else:
+        users = get_all_users()
+
+        if users:
+            st.dataframe(users, use_container_width=True, hide_index=True)
+        else:
+            st.info("No users found.")
+
+        user_tab1, user_tab2, user_tab3 = st.tabs([
+            "Add User",
+            "Edit User",
+            "Delete User"
+        ])
+
+        with user_tab1:
+            st.markdown("#### Add user")
+
+            new_username = st.text_input("Username", key="add_user_username")
+            new_password = st.text_input("Password", type="password", key="add_user_password")
+            new_role = st.selectbox(
+                "Role",
+                ["Admin", "Recruiter", "Manager"],
+                key="add_user_role"
+            )
+            new_active = st.checkbox("Active", value=True, key="add_user_active")
+
+            if st.button("Create User", use_container_width=True, key="create_user_btn"):
+                if not new_username.strip():
+                    st.warning("Please enter a username.")
+
+                elif not new_password.strip():
+                    st.warning("Please enter a password.")
+
+                elif len(new_password) < 8:
+                    st.warning("Password must contain at least 8 characters.")
+
+                elif username_exists(new_username):
+                    st.warning("An account with this username already exists.")
+                    st.info("Tip: Use the employee's email or company username.")
+
+                else:
+                    try:
+                        create_user(
+                            new_username,
+                            new_password,
+                            new_role,
+                            new_active
+                        )
+
+                        st.success(f"User '{new_username}' created successfully.")
+                        st.rerun()
+
+                    except Exception:
+                        st.error("Unable to create user. Please try again.")
+
+        with user_tab2:
+            st.markdown("#### Edit user")
+
+            if not users:
+                st.info("No users available.")
+            else:
+                user_options = [
+                    f"{u['username']} — {u['role']} — ID {u['id']}"
+                    for u in users
+                ]
+
+                selected_user = st.selectbox(
+                    "Select user",
+                    user_options,
+                    key="edit_user_select"
+                )
+
+                selected_id = int(selected_user.split("ID ")[1])
+
+                selected_row = next(
+                    u for u in users if int(u["id"]) == selected_id
+                )
+
+                edit_username = st.text_input(
+                    "Username",
+                    value=selected_row["username"],
+                    key=f"edit_username_{selected_id}"
+                )
+
+                role_options = ["Admin", "Recruiter", "Manager"]
+
+                edit_role = st.selectbox(
+                    "Role",
+                    role_options,
+                    index=role_options.index(selected_row["role"])
+                    if selected_row["role"] in role_options else 1,
+                    key=f"edit_role_{selected_id}"
+                )
+
+                edit_active = st.checkbox(
+                    "Active",
+                    value=bool(selected_row["is_active"]),
+                    key=f"edit_active_{selected_id}"
+                )
+
+                if st.button(
+                    "Update User",
+                    use_container_width=True,
+                    key=f"update_user_{selected_id}"
+                ):
+                    if not edit_username.strip():
+                        st.warning("Username is required.")
+
+                    elif username_exists(edit_username, exclude_user_id=selected_id):
+                        st.error("This username already exists.")
+
+                    else:
+                        try:
+                            update_user(
+                                selected_id,
+                                edit_username,
+                                edit_role,
+                                edit_active
+                            )
+
+                            st.success("User updated successfully in Supabase.")
+                            st.rerun()
+
+                        except Exception:
+                            st.error("Unable to update user. Please try again.")
+
+        with user_tab3:
+            st.markdown("#### Delete user")
+
+            if not users:
+                st.info("No users available.")
+            else:
+                user_options_delete = [
+                    f"{u['username']} — ID {u['id']}"
+                    for u in users
+                ]
+
+                selected_delete_user = st.selectbox(
+                    "Select user to delete",
+                    user_options_delete,
+                    key="delete_user_select"
+                )
+
+                delete_id = int(selected_delete_user.split("ID ")[1])
+                delete_username = selected_delete_user.split(" — ID ")[0]
+
+                confirm_delete = st.checkbox(
+                    "I confirm deleting this user",
+                    key=f"confirm_delete_{delete_id}"
+                )
+
+                if st.button(
+                    "Delete User",
+                    use_container_width=True,
+                    key=f"delete_user_{delete_id}"
+                ):
+                    if not confirm_delete:
+                        st.warning("Please confirm first.")
+
+                    elif st.session_state.get("username") == delete_username:
+                        st.error("You cannot delete your own account.")
+
+                    else:
+                        try:
+                            delete_user(delete_id)
+
+                            st.success("User deleted successfully from Supabase.")
+                            st.rerun()
+
+                        except Exception:
+                            st.error("Unable to delete user. Please try again.")
+
+    st.divider()
+
     st.subheader("System")
 
     sys_col1, sys_col2, sys_col3 = st.columns(3)
@@ -2382,7 +2572,7 @@ elif st.session_state.page == "Settings":
         st.metric("Version", "1.0.0")
 
     with sys_col2:
-        st.metric("Authentication", "Supabase")
+        st.metric("Authentication", "Supabase ")
 
     with sys_col3:
         st.metric("Environment", "Local")

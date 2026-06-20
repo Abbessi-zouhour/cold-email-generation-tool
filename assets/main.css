@@ -682,9 +682,7 @@ header {
     margin-top: 4px;
 }
 
-[data-testid="stToolbar"] {
-    display: none;
-}
+
 div[data-testid="stHorizontalBlock"] {
     margin-top: 40px;
 }
@@ -808,17 +806,7 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     background: #185FA5;
     color: white;
 }
-button[title="Show password text"] {
-    display: none !important;
-}
 
-button[title="Hide password text"] {
-    display: none !important;
-}
-
-[data-testid="InputInstructions"] {
-    display: none !important;
-}
 
 /* Sidebar user profile card */
 .sidebar-user-card {
