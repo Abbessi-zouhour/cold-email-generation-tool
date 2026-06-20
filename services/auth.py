@@ -5,6 +5,12 @@ def login(logo_path=None):
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
 
+    if "username" not in st.session_state:
+        st.session_state.username = None
+
+    if "role" not in st.session_state:
+        st.session_state.role = None
+
     if st.session_state.authenticated:
         return True
 
@@ -52,6 +58,8 @@ def login(logo_path=None):
             and password == st.secrets["auth"]["admin_password"]
         ):
             st.session_state.authenticated = True
+            st.session_state.username = username
+            st.session_state.role = "Admin"
             st.rerun()
         else:
             st.error("Invalid username or password.")

@@ -171,6 +171,25 @@ job_country = country_options[selected_job_country]
 
 use_online_jobs = st.sidebar.button("Fetch Online Jobs")
 
+username = st.session_state.get("username", "User")
+role = st.session_state.get("role", "User")
+
+st.sidebar.markdown(
+    f"""
+    <div class="sidebar-user-card">
+        <div class="sidebar-user-name"> {username}</div>
+        <div class="sidebar-user-role">Role: {role}</div>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+if st.sidebar.button("Logout", use_container_width=True):
+    st.session_state.authenticated = False
+    st.session_state.username = None
+    st.session_state.role = None
+    st.session_state.page = "Dashboard"
+    st.rerun()
 
 # SQLite loading
 if uploaded_candidates is not None:

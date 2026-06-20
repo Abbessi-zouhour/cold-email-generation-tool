@@ -773,3 +773,38 @@ section[data-testid="stSidebar"] [role="radiogroup"] label[data-checked="true"] 
     color: #185FA5 !important;
     font-weight: 500 !important;
 }
+/* Sidebar user profile card */
+.sidebar-user-card {
+    background: #EAF7EF;
+    border: 1px solid #CCEBD6;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin: 18px 0 12px 0;
+}
+
+.sidebar-user-name {
+    font-weight: 600;
+    color: #185FA5;
+    font-size: 15px;
+    margin-bottom: 4px;
+}
+
+.sidebar-user-role {
+    color: #6B7280;
+    font-size: 13px;
+}
+
+/* Sidebar logout button */
+section[data-testid="stSidebar"] .stButton > button {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid #185FA5;
+    color: #185FA5;
+    background: white;
+    font-weight: 500;
+}
+
+section[data-testid="stSidebar"] .stButton > button:hover {
+    background: #185FA5;
+    color: white;
+}
