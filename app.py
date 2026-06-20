@@ -31,6 +31,7 @@ from database_manager import (
     delete_candidate,
 
 )
+from services.user_manager import get_user, update_password
 from services.interview_scheduler import (
     add_interview,
     get_interviews,
@@ -128,13 +129,20 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
+current_page = (
+    st.session_state.page
+    if st.session_state.page in menu_options
+    else "Dashboard"
+)
+
 menu = st.sidebar.radio(
     "Navigation",
     menu_options,
-    index=menu_options.index(st.session_state.page)
+    index=menu_options.index(current_page)
 )
 
-st.session_state.page = menu
+if st.session_state.page in menu_options:
+    st.session_state.page = menu
 
 st.sidebar.markdown("### Upload Your Data")
 
@@ -183,6 +191,10 @@ st.sidebar.markdown(
     """,
     unsafe_allow_html=True
 )
+
+if st.sidebar.button("Settings", use_container_width=True):
+    st.session_state.page = "Settings"
+    st.rerun()
 
 if st.sidebar.button("Logout", use_container_width=True):
     st.session_state.authenticated = False
@@ -2313,3 +2325,64 @@ elif menu == "AI Assistant":
             "role": "assistant",
             "content": answer
         })
+if "page" not in st.session_state:
+    st.session_state.page = "Dashboard"
+
+elif st.session_state.page == "Settings":
+    st.markdown('<div class="section-title">Settings</div>', unsafe_allow_html=True)
+
+    st.markdown("### Account")
+
+    current_user = st.session_state.get("username", "admin")
+    role = st.session_state.get("role", "Admin")
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.metric("Username", current_user)
+
+    with col2:
+        st.metric("Role", role)
+
+    st.markdown("### Change Password")
+
+    st.info("Password changes are saved automatically in Supabase.")
+
+    old_password = st.text_input("Current password", type="password")
+    new_password = st.text_input("New password", type="password")
+    confirm_password = st.text_input("Confirm new password", type="password")
+
+    if st.button("Change password", use_container_width=True):
+        user = get_user(current_user, old_password)
+
+        if not user:
+            st.error("Current password is incorrect.")
+        elif new_password != confirm_password:
+            st.error("New passwords do not match.")
+        elif len(new_password) < 8:
+            st.warning("Password must contain at least 8 characters.")
+        else:
+            update_password(current_user, new_password)
+
+            st.success("Password changed successfully. Please log in again.")
+
+            st.session_state.authenticated = False
+            st.session_state.username = None
+            st.session_state.role = None
+            st.session_state.page = "Dashboard"
+            st.rerun()
+
+    st.divider()
+
+    st.subheader("System")
+
+    sys_col1, sys_col2, sys_col3 = st.columns(3)
+
+    with sys_col1:
+        st.metric("Version", "1.0.0")
+
+    with sys_col2:
+        st.metric("Authentication", "Supabase")
+
+    with sys_col3:
+        st.metric("Environment", "Local")

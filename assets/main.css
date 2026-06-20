@@ -808,3 +808,36 @@ section[data-testid="stSidebar"] .stButton > button:hover {
     background: #185FA5;
     color: white;
 }
+button[title="Show password text"] {
+    display: none !important;
+}
+
+button[title="Hide password text"] {
+    display: none !important;
+}
+
+[data-testid="InputInstructions"] {
+    display: none !important;
+}
+
+/* Sidebar user profile card */
+.sidebar-user-card {
+    background: #EAF7EF;
+    border: 1px solid #CCEBD6;
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin: 18px 0 12px 0;
+}
+
+.sidebar-user-name {
+    font-weight: 700;
+    color: #185FA5;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+
+.sidebar-user-role {
+    color: #6B7280;
+    font-size: 13px;
+}
+

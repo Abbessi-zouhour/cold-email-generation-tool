@@ -1,5 +1,5 @@
 import streamlit as st
-
+from services.user_manager import get_user
 
 def login(logo_path=None):
     if "authenticated" not in st.session_state:
@@ -28,6 +28,7 @@ def login(logo_path=None):
             .block-container {
                 padding-top: 4rem;
                 max-width: 700px;
+                margin: auto;
             }
         </style>
         """,
@@ -35,7 +36,10 @@ def login(logo_path=None):
     )
 
     if logo_path is not None:
-        st.image(str(logo_path), width=180)
+        col1, col2, col3 = st.columns([1, 1, 1])
+
+        with col2:
+            st.image(str(logo_path), width=140)
 
     st.markdown(
         """
@@ -53,13 +57,13 @@ def login(logo_path=None):
     password = st.text_input("Password", type="password")
 
     if st.button("Login", use_container_width=True):
-        if (
-            username == st.secrets["auth"]["admin_username"]
-            and password == st.secrets["auth"]["admin_password"]
-        ):
+
+        user = get_user(username, password)
+
+        if user:
             st.session_state.authenticated = True
-            st.session_state.username = username
-            st.session_state.role = "Admin"
+            st.session_state.username = user["username"]
+            st.session_state.role = user["role"]
             st.rerun()
         else:
             st.error("Invalid username or password.")
