@@ -1,155 +1,258 @@
-# TalentBridge
+# TalentBridge 🚀
 
-AI-Powered Recruitment Intelligence Platform built with Streamlit, Supabase, and OpenAI.
+## AI-Powered Recruitment Intelligence Platform
 
-TalentBridge helps recruiters manage candidates, job offers, interviews, client communications, ATS analysis, CV parsing, and AI-powered recruitment workflows from a single dashboard.
+TalentBridge is a modern AI-powered recruitment platform built with **Streamlit**, **Supabase**, and **OpenAI**. It helps recruiters manage candidates, jobs, interviews, CRM activities, candidate rankings, reports, and recruitment workflows from a single dashboard.
 
 ---
 
-## Features
+## 🌟 Features
 
-### Candidate Management
-- Add, edit, and manage candidates
-- Candidate profiles
-- Candidate matching engine
-- Candidate timeline tracking
-- Pipeline management
+### 🔐 Authentication & User Management
 
-### Job Management
-- Manage job offers
-- Online job search integration
-- Job analysis and scoring
+- Secure Login System
+- Multi-User Authentication
+- Role-Based Access Control (RBAC)
+  - Admin
+  - Recruiter
+  - Manager
+- User Creation
+- User Editing
+- User Deletion
+- Password Management
+- Session Management
 
-### AI Recruitment Tools
-- AI Assistant
+---
+
+### 👥 Candidate Management
+
+- Candidate Database
+- Candidate Search & Filtering
+- Candidate Profiles
+- Candidate Status Tracking
+- Candidate Pipeline
+- Candidate Timeline
+- Candidate Notes & Comments
+
+---
+
+### 📋 Job Management
+
+- Job Offers Management
+- Online Job Search Integration
+- Job Analysis
+- Candidate Matching
+- ATS Evaluation
+
+---
+
+### 🤖 AI Recruitment Features
+
+#### AI Assistant
+
+Recruitment-focused assistant capable of answering questions about:
+
+- Candidates
+- Jobs
+- ATS Scores
+- Recruitment Workflows
+- Hiring Decisions
+
+#### AI Candidate Ranking
+
+Automatically ranks candidates against job requirements based on:
+
+- Skills
+- Experience
+- ATS Compatibility
+- AI Matching Score
+
+---
+
+### 📄 Resume Processing
+
 - CV Parser
-- ATS Score Calculator
-- Cover Letter Generator
-- Candidate Recommendation Engine
-- Interview Question Generator
-
-### Interview Management
-- Interview Scheduler
-- Interview Invitation Email Generator
-- Email Sending Integration
-- Interview Scorecards
-
-### Client Communication Agent
-- Delay Message Generator
-- Progress Update Generator
-- Client Records Management
-- Client CRUD Operations
-
-### Analytics Dashboard
-- Recruitment KPIs
-- Candidate Pipeline Distribution
-- Candidate Status Analytics
-- Country Analytics
-- Interview Analytics
-
-### Authentication
-- Secure Login Page
-- Streamlit Secrets Authentication
-- Protected Access to Platform
+- Resume Analysis
+- ATS Score Generator
+- Skills Extraction
+- Candidate Data Extraction
 
 ---
 
-## Technology Stack
+### 📧 Communication Tools
+
+#### Email Generator
+
+Generate professional:
+
+- Outreach Emails
+- Interview Invitations
+- Follow-Up Emails
+- Rejection Emails
+- Offer Letters
+
+#### Client Communication Agent
+
+Generate client-facing communications and recruitment updates.
+
+---
+
+### 📅 Interview Management
+
+- Interview Scheduler
+- Interview Reminder Emails
+- Interview Scorecards
+- AI Interview Questions Generator
+
+---
+
+### 🏢 Recruitment CRM
+
+Manage:
+
+- Companies
+- Clients
+- Contacts
+- Industries
+- Recruitment Relationships
+
+---
+
+### 📊 Reporting & Analytics
+
+- Dashboard Analytics
+- Candidate Metrics
+- Job Metrics
+- Hiring Metrics
+- Pipeline Analytics
+- PDF Export Reports
+
+---
+
+### 📝 Activity Logs
+
+Track all important platform actions:
+
+- User Creation
+- User Updates
+- User Deletion
+- CRM Actions
+- Candidate Actions
+- AI Actions
+- System Events
+
+---
+
+## 🛠️ Tech Stack
 
 ### Frontend
+
 - Streamlit
+- HTML
+- CSS
 
 ### Backend
+
 - Python
 
 ### Database
-- Supabase
 
-### AI Services
+- Supabase
+- PostgreSQL
+
+### Artificial Intelligence
+
 - OpenAI API
 
-### Email Services
-- SMTP Email Integration
+### Email
 
-### Data Processing
-- Pandas
-- PDF Parsing
+- Gmail SMTP
+
+### Deployment
+
+- Streamlit Community Cloud
+
+### Version Control
+
+- Git
+- GitHub
 
 ---
 
-## Project Structure
+## 📂 Project Structure
 
 ```text
 TalentBridge/
 │
-├── assets/
-│   ├── images/
-│   ├── css/
-│   └── main.css
+├── app.py
 │
 ├── database/
-│
-├── models/
+│   ├── users.py
+│   ├── candidates.py
+│   ├── jobs.py
+│   ├── candidate_notes.py
+│   ├── crm.py
+│   ├── rankings.py
+│   ├── activity_logs.py
+│   └── supabase_client.py
 │
 ├── services/
-│   ├── auth.py
-│   ├── assistant_agent.py
-│   ├── ats_score.py
+│   ├── ai_assistant.py
 │   ├── candidate_matcher.py
-│   ├── client_agent.py
-│   ├── cover_letter_generator.py
+│   ├── ats_score.py
 │   ├── cv_parser.py
 │   ├── email_generator.py
-│   ├── email_sender.py
-│   ├── interview_email.py
-│   ├── interview_questions.py
-│   ├── interview_scheduler.py
-│   ├── pipeline_manager.py
-│   ├── recommendation_engine.py
-│   ├── resume_reader.py
-│   ├── supabase_client.py
-│   ├── supabase_manager.py
-│   └── ...
+│   ├── interview_reminders.py
+│   ├── ranking_engine.py
+│   └── pdf_reports.py
 │
-├── app.py
-├── database_manager.py
+├── assets/
+│   ├── css/
+│   ├── images/
+│   └── icons/
+│
+├── .streamlit/
+│   └── secrets.toml
+│
 ├── requirements.txt
-└── README.md
+├── README.md
+└── .gitignore
 ```
 
 ---
 
-## Installation
+## ⚙️ Installation
 
-Clone the repository:
+### Clone Repository
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/cold-email_generation-tool.git
-
-cd cold-email_generation-tool
+git clone https://github.com/YOUR_USERNAME/TalentBridge.git
+cd TalentBridge
 ```
 
-Create virtual environment:
+---
+
+### Create Virtual Environment
 
 ```bash
 python -m venv venv
 ```
 
-Activate virtual environment:
-
-### Windows
+Windows:
 
 ```bash
 venv\Scripts\activate
 ```
 
-### Linux / Mac
+Linux / Mac:
 
 ```bash
 source venv/bin/activate
 ```
 
-Install dependencies:
+---
+
+### Install Dependencies
 
 ```bash
 pip install -r requirements.txt
@@ -157,7 +260,7 @@ pip install -r requirements.txt
 
 ---
 
-## Environment Variables
+## 🔑 Environment Variables
 
 Create:
 
@@ -168,142 +271,269 @@ Create:
 Example:
 
 ```toml
-[auth]
-admin_username = "admin"
-admin_password = "your_secure_password"
+SUPABASE_URL="your_supabase_url"
+SUPABASE_KEY="your_supabase_key"
 
-[supabase]
-url = "YOUR_SUPABASE_URL"
-key = "YOUR_SUPABASE_ANON_KEY"
+OPENAI_API_KEY="your_openai_api_key"
 
-[openai]
-api_key = "YOUR_OPENAI_API_KEY"
-
-[email]
-smtp_server = "smtp.gmail.com"
-smtp_port = 587
-email = "your@email.com"
-password = "your_app_password"
+SMTP_SERVER="smtp.gmail.com"
+SMTP_PORT="587"
+SMTP_EMAIL="your_email@gmail.com"
+SMTP_PASSWORD="your_app_password"
 ```
 
 ---
 
-## Run Application
+## 🗄️ Database Schema
 
-```bash
-streamlit run app.py
+### app_users
+
+```sql
+id
+username
+password_hash
+role
+is_active
+created_at
 ```
 
-Application:
+### candidates
 
-```text
-http://localhost:8501
+```sql
+id
+name
+email
+phone
+country
+skills
+experience_years
+status
+pipeline_stage
+created_at
+```
+
+### jobs
+
+```sql
+id
+title
+company
+location
+description
+status
+created_at
+```
+
+### candidate_notes
+
+```sql
+id
+candidate_id
+note
+created_by
+created_at
+```
+
+### crm_companies
+
+```sql
+id
+company_name
+industry
+contact_person
+email
+phone
+created_at
+```
+
+### candidate_rankings
+
+```sql
+id
+candidate_id
+job_id
+score
+reason
+created_at
+```
+
+### activity_logs
+
+```sql
+id
+username
+role
+action
+entity_type
+entity_id
+details
+created_at
 ```
 
 ---
 
-## Authentication
+## 🔐 User Roles
 
-TalentBridge uses Streamlit Secrets for authentication.
+### Admin
 
-Users must log in before accessing the platform.
+Full Access:
 
-Credentials are stored securely in:
-
-```text
-.streamlit/secrets.toml
-```
-
-This file is excluded from Git using:
-
-```gitignore
-.streamlit/
-```
+- User Management
+- Candidates
+- Jobs
+- CRM
+- Rankings
+- Reports
+- Activity Logs
+- Settings
 
 ---
 
-## Deployment
+### Recruiter
+
+Access To:
+
+- Candidates
+- Jobs
+- CRM
+- Notes
+- Rankings
+- Reports
+- Email Tools
+
+Restrictions:
+
+- Cannot manage users
+- Cannot access system settings
+
+---
+
+### Manager
+
+Access To:
+
+- Dashboard
+- Analytics
+- Reports
+- Candidates
+- Jobs
+
+Restrictions:
+
+- Read-only access
+- No user management
+
+---
+
+## 🚀 Deployment
 
 ### Streamlit Community Cloud
 
 1. Push project to GitHub
-2. Create Streamlit Cloud account
+
+```bash
+git push origin main
+```
+
+2. Create a Streamlit Cloud application
+
 3. Connect GitHub repository
-4. Deploy application
-5. Add secrets from:
 
-```toml
-[auth]
-...
+4. Add secrets
 
-[supabase]
-...
-
-[openai]
-...
-
-[email]
-...
-```
-
-inside Streamlit Cloud Secrets Manager.
+5. Deploy
 
 ---
 
-## Security
+## 📈 Roadmap
 
-The following files are excluded from Git:
+### Version 2
 
-```gitignore
-.streamlit/
-.env
-venv/
-__pycache__/
-.vscode/
-database/*.db
-```
+- Drag & Drop Pipeline
+- Advanced Analytics
+- Resume Parsing Improvements
+- Multi-Tenant SaaS
+- Docker Deployment
+- Recruiter Performance Tracking
+- Public Demo Website
 
-Never commit:
+### Version 3
 
-- API Keys
-- Supabase Keys
-- SMTP Passwords
-- Authentication Credentials
+- LinkedIn Integration
+- WhatsApp Notifications
+- Calendar Integration
+- AI Candidate Recommendations
+- AI Job Description Generator
 
 ---
 
-## Screenshots
-
-### Login Page
-- Secure Authentication
-- TalentBridge Branding
-- Protected Access
+## 📸 Screenshots
 
 ### Dashboard
-- Recruitment Analytics
-- Candidate Metrics
-- Hiring KPIs
 
-### AI Tools
-- CV Parser
-- ATS Scoring
-- Cover Letter Generation
+- Recruitment KPIs
+- Analytics
+- Hiring Metrics
+
+### Candidate Management
+
+- Candidate Profiles
+- Candidate Notes
+- Pipeline Tracking
+
+### Recruitment CRM
+
+- Companies
+- Contacts
+- Relationship Management
+
+### AI Features
+
 - AI Assistant
+- Candidate Ranking
+- ATS Analysis
 
 ---
 
-## Author
+## 👨‍💻 Author
 
-TalentBridge Recruitment Intelligence Platform
+### TalentBridge
 
-Built with:
+AI-Powered Recruitment Intelligence Platform
+
+Built using:
+
 - Python
 - Streamlit
 - Supabase
+- PostgreSQL
 - OpenAI
 
 ---
 
-## License
+## 📜 License
 
 MIT License
+
+Copyright © 2026 TalentBridge
+
+---
+
+# Version
+
+```text
+TalentBridge v1.0.0
+```
+
+### Status
+
+✅ Production Ready MVP  
+✅ Streamlit Cloud Deployment  
+✅ Supabase Connected  
+✅ Role-Based Access Control  
+✅ Recruitment CRM  
+✅ AI Candidate Ranking  
+✅ PDF Reports  
+✅ Activity Logs  
+✅ Interview Reminder Emails  
+✅ GitHub Integrated
