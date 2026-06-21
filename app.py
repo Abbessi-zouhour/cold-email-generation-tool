@@ -105,6 +105,13 @@ from services.ai_ranking import (
     get_candidate_rankings,
     delete_candidate_ranking
 )
+from services.interview_reminders import (
+    create_interview_reminder,
+    get_interview_reminders,
+    get_pending_reminders,
+    mark_reminder_sent,
+    delete_interview_reminder
+)
 
 BASE_DIR = Path(__file__).parent
 LOGO_PATH = BASE_DIR / "assets" / "images" / "logo.png"
@@ -142,6 +149,7 @@ ROLE_PERMISSIONS = {
         "Candidate Pipeline",
         "Candidate Timeline",
         "Interview Scheduler",
+        "Interview Reminders",
         "AI Interview Questions",
         "Interview Scorecard",
         "Email Generator",
@@ -163,6 +171,7 @@ ROLE_PERMISSIONS = {
         "Candidate Pipeline",
         "Candidate Timeline",
         "Interview Scheduler",
+        "Interview Reminders",
         "Email Generator",
         "AI Assistant"
     ],
@@ -173,6 +182,7 @@ ROLE_PERMISSIONS = {
         "Candidate Matching",
         "Candidate Pipeline",
         "Interview Scorecard",
+        "Interview Reminders",
         "Client Communication Agent"
     ]
 }
@@ -683,7 +693,7 @@ Required Skills: {job.get("required_skills", "")}
         st.dataframe(rankings, use_container_width=True, hide_index=True)
     else:
         st.info("No rankings saved yet.")
-        
+
 elif menu == "Job Offers":
     st.markdown('<div class="section-title">Job Offers</div>', unsafe_allow_html=True)
 
@@ -1521,6 +1531,157 @@ Current Stage: {candidate_row.get('pipeline_stage','')}
                             st.success(message)
                         else:
                             st.error(message)
+
+elif menu == "Interview Reminders":
+
+    st.markdown(
+        '<div class="section-title">Interview Reminders</div>',
+        unsafe_allow_html=True
+    )
+
+    candidates = get_candidates_supabase()
+
+    if candidates.empty:
+        st.warning("No candidates found.")
+    else:
+
+        candidate_options = (
+            candidates["name"].astype(str)
+            + " — ID "
+            + candidates["id"].astype(str)
+        ).tolist()
+
+        selected_candidate = st.selectbox(
+            "Select candidate",
+            candidate_options
+        )
+
+        candidate_id = int(selected_candidate.split("ID ")[1])
+
+        candidate_row = candidates[
+            candidates["id"] == candidate_id
+        ].iloc[0]
+
+        interview_date = st.date_input(
+            "Interview Date"
+        )
+
+        interview_time = st.time_input(
+            "Interview Time"
+        )
+
+        interview_type = st.selectbox(
+            "Interview Type",
+            [
+                "Phone",
+                "Video",
+                "On-site"
+            ]
+        )
+
+        if st.button(
+            "Create Reminder",
+            use_container_width=True
+        ):
+
+            interview_datetime = (
+                f"{interview_date} {interview_time}"
+            )
+
+            create_interview_reminder(
+                candidate_id=candidate_id,
+                candidate_name=candidate_row["name"],
+                candidate_email=candidate_row.get("email", ""),
+                interview_date=interview_datetime,
+                interview_type=interview_type
+            )
+
+            st.success(
+                "Interview reminder created successfully."
+            )
+
+            st.rerun()
+
+    st.divider()
+
+    st.subheader("Scheduled Reminders")
+
+    reminders = get_interview_reminders()
+
+    if reminders:
+
+        st.dataframe(
+            reminders,
+            use_container_width=True,
+            hide_index=True
+        )
+        st.markdown("### Send Reminder Email")
+
+        pending_reminders = get_pending_reminders()
+
+        if not pending_reminders:
+            st.info("No pending reminders to send.")
+        else:
+            reminder_options = [
+                f"{r['candidate_name']} — {r['interview_date']} — ID {r['id']}"
+                for r in pending_reminders
+            ]
+
+            selected_reminder = st.selectbox(
+                "Select reminder",
+                reminder_options,
+                key="select_pending_reminder"
+            )
+
+            reminder_id = int(selected_reminder.split("ID ")[1])
+
+            reminder = next(
+                r for r in pending_reminders if int(r["id"]) == reminder_id
+            )
+
+            reminder_subject = f"Interview Reminder - {reminder['interview_type']} Interview"
+
+            reminder_body = f"""
+        Dear {reminder['candidate_name']},
+
+        This is a friendly reminder about your upcoming interview.
+
+        Interview details:
+        - Date and time: {reminder['interview_date']}
+        - Interview type: {reminder['interview_type']}
+
+        Please make sure you are available on time and prepared for the interview.
+
+        Best regards,
+
+        Recruitment Team
+        """
+
+            st.text_area(
+                "Reminder email preview",
+                reminder_body,
+                height=260
+            )
+
+            if st.button("Send Reminder Email", use_container_width=True):
+                if not reminder.get("candidate_email"):
+                    st.error("Candidate email is missing.")
+                else:
+                    success, message = send_email(
+                        to_email=reminder["candidate_email"],
+                        subject=reminder_subject,
+                        body=reminder_body
+                    )
+
+                    if success:
+                        mark_reminder_sent(reminder_id)
+                        st.success("Reminder email sent successfully.")
+                        st.rerun()
+                    else:
+                        st.error(message)
+
+    else:
+        st.info("No reminders found.")
 
 elif menu == "ATS Score":
     st.markdown('<div class="section-title">ATS Score Calculator</div>', unsafe_allow_html=True)
