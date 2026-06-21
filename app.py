@@ -112,6 +112,8 @@ from services.interview_reminders import (
     mark_reminder_sent,
     delete_interview_reminder
 )
+from services.pdf_reports import generate_ranking_pdf
+from services.activity_logger import log_activity, get_activity_logs
 
 BASE_DIR = Path(__file__).parent
 LOGO_PATH = BASE_DIR / "assets" / "images" / "logo.png"
@@ -158,7 +160,8 @@ ROLE_PERMISSIONS = {
         "ATS Score",
         "Cover Letter Generator",
         "Client Communication Agent",
-        "AI Assistant"
+        "AI Assistant",
+        "Activity Logs"
     ],
     "Recruiter": [
         "Dashboard",
@@ -537,6 +540,14 @@ elif menu == "Recruitment CRM":
                 st.warning("Company name is required.")
             else:
                 add_crm_company(company_name, industry, country, website, status, owner)
+                log_activity(
+                    st.session_state.get("username"),
+                    st.session_state.get("role"),
+                    "Created CRM company",
+                    "crm_companies",
+                    company_name,
+                    country
+                )
                 st.success("Company saved successfully.")
                 st.rerun()
 
@@ -666,7 +677,14 @@ elif menu == "AI Candidate Ranking":
                 jobs=jobs,
                 created_by=st.session_state.get("username", "Unknown")
             )
-
+        log_activity(
+            st.session_state.get("username"),
+            st.session_state.get("role"),
+            "Generated AI ranking",
+            "candidate_rankings",
+            selected_job_id,
+            job.get("job_title", "")
+        )
         st.success("Candidate ranking generated and saved.")
 
         st.markdown("### Selected Job")
@@ -693,7 +711,70 @@ Required Skills: {job.get("required_skills", "")}
         st.dataframe(rankings, use_container_width=True, hide_index=True)
     else:
         st.info("No rankings saved yet.")
+    st.subheader("Saved Rankings")
 
+    rankings = get_candidate_rankings()
+
+    if rankings:
+        st.dataframe(rankings, use_container_width=True, hide_index=True)
+
+        # PDF EXPORT SECTION STARTS HERE
+        st.markdown("### Export Ranking Report")
+
+        job_titles = sorted(
+            set([
+                r.get("job_title", "")
+                for r in rankings
+                if r.get("job_title")
+            ])
+        )
+
+        selected_job_title = st.selectbox(
+            "Select job report",
+            job_titles,
+            key="ranking_pdf_job_select"
+        )
+
+        filtered_rankings = [
+            r for r in rankings
+            if r.get("job_title") == selected_job_title
+        ]
+
+        company = (
+            filtered_rankings[0].get("company", "")
+            if filtered_rankings else ""
+        )
+
+        if st.button(
+            "Generate PDF Report",
+            use_container_width=True,
+            key="generate_ranking_pdf"
+        ):
+
+            pdf_path = generate_ranking_pdf(
+                job_title=selected_job_title,
+                company=company,
+                rankings=filtered_rankings
+            )
+            log_activity(
+                st.session_state.get("username"),
+                st.session_state.get("role"),
+                "Generated PDF report",
+                "candidate_rankings",
+                selected_job_title,
+                company
+            )
+            with open(pdf_path, "rb") as file:
+                st.download_button(
+                    label="Download PDF Report",
+                    data=file,
+                    file_name=pdf_path.split("/")[-1],
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+
+    else:
+        st.info("No rankings saved yet.")
 elif menu == "Job Offers":
     st.markdown('<div class="section-title">Job Offers</div>', unsafe_allow_html=True)
 
@@ -936,7 +1017,14 @@ elif menu == "Candidate Profile":
                             note=new_note,
                             created_by=st.session_state.get("username", "Unknown")
                         )
-
+                        log_activity(
+                            st.session_state.get("username"),
+                            st.session_state.get("role"),
+                            "Added candidate note",
+                            "candidate_notes",
+                            candidate_id,
+                            candidate.get("name", "")
+                        )
                         st.success("Note saved successfully.")
                         st.rerun()
 
@@ -2723,7 +2811,14 @@ elif st.session_state.page == "Settings":
                             new_role,
                             new_active
                         )
-
+                        log_activity(
+                            st.session_state.get("username"),
+                            st.session_state.get("role"),
+                            "Created user",
+                            "app_users",
+                            new_username,
+                            f"Role: {new_role}"
+                        )
                         st.success(f"User '{new_username}' created successfully.")
                         st.rerun()
 
@@ -2794,7 +2889,14 @@ elif st.session_state.page == "Settings":
                                 edit_role,
                                 edit_active
                             )
-
+                            log_activity(
+                                st.session_state.get("username"),
+                                st.session_state.get("role"),
+                                "Updated user",
+                                "app_users",
+                                selected_id,
+                                edit_username
+                            )
                             st.success("User updated successfully in Supabase.")
                             st.rerun()
 
@@ -2840,7 +2942,14 @@ elif st.session_state.page == "Settings":
                     else:
                         try:
                             delete_user(delete_id)
-
+                            log_activity(
+                                st.session_state.get("username"),
+                                st.session_state.get("role"),
+                                "Deleted user",
+                                "app_users",
+                                delete_id,
+                                delete_username
+                            )
                             st.success("User deleted successfully from Supabase.")
                             st.rerun()
 
@@ -2861,3 +2970,13 @@ elif st.session_state.page == "Settings":
 
     with sys_col3:
         st.metric("Environment", "Local")
+
+elif menu == "Activity Logs":
+    st.markdown('<div class="section-title">Activity Logs</div>', unsafe_allow_html=True)
+
+    logs = get_activity_logs()
+
+    if logs:
+        st.dataframe(logs, use_container_width=True, hide_index=True)
+    else:
+        st.info("No activity logs yet.")
