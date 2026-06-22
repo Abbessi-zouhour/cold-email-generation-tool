@@ -102,8 +102,11 @@ from services.crm_manager import (
     delete_crm_contact,
     get_crm_followups,
     add_crm_followup,
+    update_crm_contact,
     update_crm_followup_status,
-    delete_crm_followup
+    delete_crm_followup,
+    crm_company_exists,
+    crm_contact_exists
 )
 from services.ai_ranking import (
     generate_candidate_ranking,
@@ -119,6 +122,8 @@ from services.interview_reminders import (
 )
 from services.pdf_reports import generate_ranking_pdf
 from services.activity_logger import log_activity, get_activity_logs
+from services.crm_manager import crm_company_exists
+
 
 BASE_DIR = Path(__file__).parent
 LOGO_PATH = BASE_DIR / "assets" / "images" / "logo.png"
@@ -512,142 +517,617 @@ if menu == "Dashboard":
         st.info("No interviews scheduled.")
     st.write("Supabase candidates test")
     st.dataframe(get_candidates_supabase().head())
+
 elif menu == "Recruitment CRM":
     st.markdown('<div class="section-title">Recruitment CRM</div>', unsafe_allow_html=True)
 
+    if "crm_message" in st.session_state:
+        st.success(st.session_state.crm_message)
+        del st.session_state.crm_message
+
     companies = get_crm_companies()
 
-    tab1, tab2, tab3 = st.tabs([
+    main_tab1, main_tab2, main_tab3 = st.tabs([
         "Companies",
         "Contacts",
         "Follow-ups"
     ])
 
-    with tab1:
+    # =========================
+    # COMPANIES
+    # =========================
+    with main_tab1:
         st.subheader("Companies")
 
-        if companies:
-            st.dataframe(companies, use_container_width=True, hide_index=True)
-        else:
-            st.info("No companies found.")
+        company_tab1, company_tab2, company_tab3, company_tab4 = st.tabs([
+            "List",
+            "Add",
+            "Edit",
+            "Delete"
+        ])
 
-        st.markdown("### Add company")
-
-        company_name = st.text_input("Company name")
-        industry = st.text_input("Industry")
-        country = st.text_input("Country")
-        website = st.text_input("Website")
-        status = st.selectbox("Status", ["Prospect", "Contacted", "Client", "Inactive"])
-        owner = st.session_state.get("username", "Unknown")
-
-        if st.button("Save Company", use_container_width=True, key="save_crm_company"):
-            if not company_name.strip():
-                st.warning("Company name is required.")
+        with company_tab1:
+            if companies:
+                st.dataframe(companies, use_container_width=True, hide_index=True)
             else:
-                add_crm_company(company_name, industry, country, website, status, owner)
-                log_activity(
-                    st.session_state.get("username"),
-                    st.session_state.get("role"),
-                    "Created CRM company",
-                    "crm_companies",
-                    company_name,
-                    country
-                )
-                st.success("Company saved successfully.")
-                st.rerun()
+                st.info("No companies found.")
 
-    with tab2:
+        with company_tab2:
+            st.markdown("### Add company")
+
+            company_name = st.text_input("Company name", key="add_company_name")
+            industry = st.text_input("Industry", key="add_company_industry")
+            country = st.text_input("Country", key="add_company_country")
+            website = st.text_input("Website", key="add_company_website")
+            status = st.selectbox(
+                "Status",
+                ["Prospect", "Contacted", "Client", "Inactive"],
+                key="add_company_status"
+            )
+
+            owner = st.session_state.get("username", "Unknown")
+
+            if st.button("Save Company", use_container_width=True, key="save_company_btn"):
+
+                if not company_name.strip():
+                    st.warning("Company name is required.")
+
+                elif crm_company_exists(company_name):
+                    st.warning("This company already exists.")
+
+                else:
+                    add_crm_company(
+                        company_name.strip(),
+                        industry.strip(),
+                        country.strip(),
+                        website.strip(),
+                        status,
+                        owner
+                    )
+
+                    log_activity(
+                        st.session_state.get("username"),
+                        st.session_state.get("role"),
+                        "Created CRM company",
+                        "crm_companies",
+                        company_name,
+                        country
+                    )
+
+                    st.session_state.crm_message = "Company created successfully."
+                    st.rerun()
+
+        with company_tab3:
+            st.markdown("### Edit company")
+
+            if not companies:
+                st.info("No companies available.")
+            else:
+                company_options = [
+                    f"{c['company_name']} — ID {c['id']}"
+                    for c in companies
+                ]
+
+                selected_company = st.selectbox(
+                    "Select company",
+                    company_options,
+                    key="edit_company_select"
+                )
+
+                company_id = int(selected_company.split("ID ")[1])
+                company = next(c for c in companies if int(c["id"]) == company_id)
+
+                edit_company_name = st.text_input(
+                    "Company name",
+                    value=company.get("company_name", ""),
+                    key=f"edit_company_name_{company_id}"
+                )
+
+                edit_industry = st.text_input(
+                    "Industry",
+                    value=company.get("industry", ""),
+                    key=f"edit_company_industry_{company_id}"
+                )
+
+                edit_country = st.text_input(
+                    "Country",
+                    value=company.get("country", ""),
+                    key=f"edit_company_country_{company_id}"
+                )
+
+                edit_website = st.text_input(
+                    "Website",
+                    value=company.get("website", ""),
+                    key=f"edit_company_website_{company_id}"
+                )
+
+                status_options = ["Prospect", "Contacted", "Client", "Inactive"]
+                current_status = company.get("status", "Prospect")
+
+                edit_status = st.selectbox(
+                    "Status",
+                    status_options,
+                    index=status_options.index(current_status)
+                    if current_status in status_options else 0,
+                    key=f"edit_company_status_{company_id}"
+                )
+
+                if st.button(
+                    "Update Company",
+                    use_container_width=True,
+                    key=f"update_company_btn_{company_id}"
+                ):
+
+                    if not edit_company_name.strip():
+                        st.warning("Company name is required.")
+
+                    elif crm_company_exists(
+                        edit_company_name,
+                        exclude_company_id=company_id
+                    ):
+                        st.warning(
+                            "Another company already exists with this name."
+                        )
+
+                    else:
+                        update_crm_company(
+                            company_id,
+                            edit_company_name.strip(),
+                            edit_industry.strip(),
+                            edit_country.strip(),
+                            edit_website.strip(),
+                            edit_status,
+                            st.session_state.get("username", "Unknown")
+                        )
+
+                        log_activity(
+                            st.session_state.get("username"),
+                            st.session_state.get("role"),
+                            "Updated CRM company",
+                            "crm_companies",
+                            company_id,
+                            edit_company_name
+                        )
+
+                        st.session_state.crm_message = (
+                            "Company updated successfully."
+                        )
+
+                        st.rerun()
+
+        with company_tab4:
+            st.markdown("### Delete company")
+
+            if not companies:
+                st.info("No companies available.")
+            else:
+                company_options_delete = [
+                    f"{c['company_name']} — ID {c['id']}"
+                    for c in companies
+                ]
+
+                selected_company_delete = st.selectbox(
+                    "Select company to delete",
+                    company_options_delete,
+                    key="delete_company_select"
+                )
+
+                company_delete_id = int(selected_company_delete.split("ID ")[1])
+                company_delete_name = selected_company_delete.split(" — ID ")[0]
+
+                confirm_delete_company = st.checkbox(
+                    "I confirm deleting this company",
+                    key=f"confirm_delete_company_{company_delete_id}"
+                )
+
+                if st.button("Delete Company", use_container_width=True, key=f"delete_company_btn_{company_delete_id}"):
+                    if not confirm_delete_company:
+                        st.warning("Please confirm first.")
+                    else:
+                        delete_crm_company(company_delete_id)
+
+                        log_activity(
+                            st.session_state.get("username"),
+                            st.session_state.get("role"),
+                            "Deleted CRM company",
+                            "crm_companies",
+                            company_delete_id,
+                            company_delete_name
+                        )
+
+                        st.session_state.crm_message = "Company deleted successfully."
+                        st.rerun()
+
+    # =========================
+    # CONTACTS
+    # =========================
+    with main_tab2:
         st.subheader("Contacts")
 
         if not companies:
             st.warning("Please add a company first.")
         else:
+            contact_tab1, contact_tab2, contact_tab3, contact_tab4 = st.tabs([
+                "List",
+                "Add",
+                "Edit",
+                "Delete"
+            ])
+
             company_options = [
                 f"{c['company_name']} — ID {c['id']}"
                 for c in companies
             ]
 
-            selected_company = st.selectbox("Select company", company_options)
-            company_id = int(selected_company.split("ID ")[1])
+            selected_company = st.selectbox(
+                "Select company",
+                company_options,
+                key="contact_company_select"
+            )
 
+            company_id = int(selected_company.split("ID ")[1])
             contacts = get_crm_contacts(company_id)
 
-            if contacts:
-                st.dataframe(contacts, use_container_width=True, hide_index=True)
-            else:
-                st.info("No contacts for this company.")
-
-            st.markdown("### Add contact")
-
-            full_name = st.text_input("Full name")
-            job_title = st.text_input("Job title")
-            email = st.text_input("Email")
-            phone = st.text_input("Phone")
-            linkedin = st.text_input("LinkedIn")
-
-            if st.button("Save Contact", use_container_width=True, key="save_crm_contact"):
-                if not full_name.strip():
-                    st.warning("Contact name is required.")
+            with contact_tab1:
+                if contacts:
+                    st.dataframe(contacts, use_container_width=True, hide_index=True)
                 else:
-                    add_crm_contact(company_id, full_name, job_title, email, phone, linkedin)
-                    st.success("Contact saved successfully.")
-                    st.rerun()
+                    st.info("No contacts for this company.")
 
-    with tab3:
+            with contact_tab2:
+                st.markdown("### Add contact")
+
+                full_name = st.text_input("Full name", key="add_contact_full_name")
+                job_title = st.text_input("Job title", key="add_contact_job_title")
+                email = st.text_input("Email", key="add_contact_email")
+                phone = st.text_input("Phone", key="add_contact_phone")
+                linkedin = st.text_input("LinkedIn", key="add_contact_linkedin")
+
+                if st.button("Save Contact", use_container_width=True, key="save_contact_btn"):
+
+                    if not full_name.strip():
+                        st.warning("Contact name is required.")
+
+                    elif not email.strip():
+                        st.warning("Contact email is required.")
+
+                    elif crm_contact_exists(email, phone):
+                        st.warning("A contact with this email or phone already exists.")
+
+                    else:
+                        try:
+                            add_crm_contact(
+                                company_id,
+                                full_name.strip(),
+                                job_title.strip(),
+                                email.strip().lower(),
+                                phone.strip(),
+                                linkedin.strip()
+                            )
+
+                            log_activity(
+                                st.session_state.get("username"),
+                                st.session_state.get("role"),
+                                "Created CRM contact",
+                                "crm_contacts",
+                                full_name,
+                                email
+                            )
+
+                            st.session_state.crm_message = "Contact created successfully."
+                            st.rerun()
+
+                        except Exception:
+                            st.error("Unable to create contact. This email or phone may already exist.")
+
+            with contact_tab3:
+                st.markdown("### Edit contact")
+
+                if not contacts:
+                    st.info("No contacts available.")
+                else:
+                    contact_options = [
+                        f"{c['full_name']} — ID {c['id']}"
+                        for c in contacts
+                    ]
+
+                    selected_contact = st.selectbox(
+                        "Select contact",
+                        contact_options,
+                        key="edit_contact_select"
+                    )
+
+                    contact_id = int(selected_contact.split("ID ")[1])
+                    contact = next(c for c in contacts if int(c["id"]) == contact_id)
+
+                    edit_full_name = st.text_input(
+                        "Full name",
+                        value=contact.get("full_name", ""),
+                        key=f"edit_contact_full_name_{contact_id}"
+                    )
+
+                    edit_job_title = st.text_input(
+                        "Job title",
+                        value=contact.get("job_title", ""),
+                        key=f"edit_contact_job_title_{contact_id}"
+                    )
+
+                    edit_email = st.text_input(
+                        "Email",
+                        value=contact.get("email", ""),
+                        key=f"edit_contact_email_{contact_id}"
+                    )
+
+                    edit_phone = st.text_input(
+                        "Phone",
+                        value=contact.get("phone", ""),
+                        key=f"edit_contact_phone_{contact_id}"
+                    )
+
+                    edit_linkedin = st.text_input(
+                        "LinkedIn",
+                        value=contact.get("linkedin", ""),
+                        key=f"edit_contact_linkedin_{contact_id}"
+                    )
+
+                    if st.button("Update Contact", use_container_width=True, key=f"update_contact_btn_{contact_id}"):
+
+                        if not edit_full_name.strip():
+                            st.warning("Contact name is required.")
+
+                        elif not edit_email.strip():
+                            st.warning("Contact email is required.")
+
+                        elif crm_contact_exists(edit_email, edit_phone, exclude_contact_id=contact_id):
+                            st.warning("Another contact already exists with this email or phone.")
+
+                        else:
+                            try:
+                                update_crm_contact(
+                                    contact_id,
+                                    company_id,
+                                    edit_full_name.strip(),
+                                    edit_job_title.strip(),
+                                    edit_email.strip().lower(),
+                                    edit_phone.strip(),
+                                    edit_linkedin.strip()
+                                )
+
+                                log_activity(
+                                    st.session_state.get("username"),
+                                    st.session_state.get("role"),
+                                    "Updated CRM contact",
+                                    "crm_contacts",
+                                    contact_id,
+                                    edit_full_name
+                                )
+
+                                st.session_state.crm_message = "Contact updated successfully."
+                                st.rerun()
+
+                            except Exception:
+                                st.error("Unable to update contact. This email or phone may already exist.")
+
+            with contact_tab4:
+                st.markdown("### Delete contact")
+
+                if not contacts:
+                    st.info("No contacts available.")
+                else:
+                    contact_options_delete = [
+                        f"{c['full_name']} — ID {c['id']}"
+                        for c in contacts
+                    ]
+
+                    selected_contact_delete = st.selectbox(
+                        "Select contact to delete",
+                        contact_options_delete,
+                        key="delete_contact_select"
+                    )
+
+                    contact_delete_id = int(selected_contact_delete.split("ID ")[1])
+                    contact_delete_name = selected_contact_delete.split(" — ID ")[0]
+
+                    confirm_delete_contact = st.checkbox(
+                        "I confirm deleting this contact",
+                        key=f"confirm_delete_contact_{contact_delete_id}"
+                    )
+
+                    if st.button("Delete Contact", use_container_width=True, key=f"delete_contact_btn_{contact_delete_id}"):
+                        if not confirm_delete_contact:
+                            st.warning("Please confirm first.")
+                        else:
+                            delete_crm_contact(contact_delete_id)
+
+                            log_activity(
+                                st.session_state.get("username"),
+                                st.session_state.get("role"),
+                                "Deleted CRM contact",
+                                "crm_contacts",
+                                contact_delete_id,
+                                contact_delete_name
+                            )
+
+                            st.session_state.crm_message = "Contact deleted successfully."
+                            st.rerun()
+
+    # =========================
+    # FOLLOW-UPS
+    # =========================
+    with main_tab3:
         st.subheader("Follow-ups")
 
         if not companies:
             st.warning("Please add a company first.")
         else:
+            followup_tab1, followup_tab2, followup_tab3, followup_tab4 = st.tabs([
+                "List",
+                "Add",
+                "Update Status",
+                "Delete"
+            ])
+
             company_options_fu = [
                 f"{c['company_name']} — ID {c['id']}"
                 for c in companies
             ]
 
-            selected_company_fu = st.selectbox("Select company for follow-up", company_options_fu)
-            company_id_fu = int(selected_company_fu.split("ID ")[1])
+            selected_company_fu = st.selectbox(
+                "Select company for follow-up",
+                company_options_fu,
+                key="followup_company_select"
+            )
 
+            company_id_fu = int(selected_company_fu.split("ID ")[1])
             contacts_fu = get_crm_contacts(company_id_fu)
             followups = get_crm_followups(company_id_fu)
 
-            if followups:
-                st.dataframe(followups, use_container_width=True, hide_index=True)
-            else:
-                st.info("No follow-ups for this company.")
-
-            st.markdown("### Add follow-up")
-
-            contact_options = ["No contact"] + [
-                f"{c['full_name']} — ID {c['id']}"
-                for c in contacts_fu
-            ]
-
-            selected_contact = st.selectbox("Contact", contact_options)
-
-            contact_id = None
-            if selected_contact != "No contact":
-                contact_id = int(selected_contact.split("ID ")[1])
-
-            followup_type = st.selectbox("Type", ["Email", "Call", "Meeting", "WhatsApp", "Other"])
-            notes = st.text_area("Notes")
-            followup_date = st.date_input("Follow-up date")
-            followup_status = st.selectbox("Status", ["Pending", "Completed", "Cancelled"])
-
-            if st.button("Save Follow-up", use_container_width=True, key="save_crm_followup"):
-                if not notes.strip():
-                    st.warning("Follow-up notes are required.")
+            with followup_tab1:
+                if followups:
+                    st.dataframe(followups, use_container_width=True, hide_index=True)
                 else:
-                    add_crm_followup(
-                        company_id_fu,
-                        contact_id,
-                        followup_type,
-                        notes,
-                        followup_date,
-                        followup_status,
-                        st.session_state.get("username", "Unknown")
+                    st.info("No follow-ups for this company.")
+
+            with followup_tab2:
+                st.markdown("### Add follow-up")
+
+                contact_options = ["No contact"] + [
+                    f"{c['full_name']} — ID {c['id']}"
+                    for c in contacts_fu
+                ]
+
+                selected_contact = st.selectbox(
+                    "Contact",
+                    contact_options,
+                    key="add_followup_contact"
+                )
+
+                contact_id = None
+                if selected_contact != "No contact":
+                    contact_id = int(selected_contact.split("ID ")[1])
+
+                followup_type = st.selectbox(
+                    "Type",
+                    ["Email", "Call", "Meeting", "WhatsApp", "Other"],
+                    key="add_followup_type"
+                )
+
+                notes = st.text_area("Notes", key="add_followup_notes")
+                followup_date = st.date_input("Follow-up date", key="add_followup_date")
+                followup_status = st.selectbox(
+                    "Status",
+                    ["Pending", "Completed", "Cancelled"],
+                    key="add_followup_status"
+                )
+
+                if st.button("Save Follow-up", use_container_width=True, key="save_followup_btn"):
+                    if not notes.strip():
+                        st.warning("Follow-up notes are required.")
+                    else:
+                        add_crm_followup(
+                            company_id_fu,
+                            contact_id,
+                            followup_type,
+                            notes,
+                            followup_date,
+                            followup_status,
+                            st.session_state.get("username", "Unknown")
+                        )
+
+                        log_activity(
+                            st.session_state.get("username"),
+                            st.session_state.get("role"),
+                            "Created CRM follow-up",
+                            "crm_followups",
+                            company_id_fu,
+                            notes[:80]
+                        )
+
+                        st.session_state.crm_message = "Follow-up created successfully."
+                        st.rerun()
+
+            with followup_tab3:
+                st.markdown("### Update follow-up status")
+
+                if not followups:
+                    st.info("No follow-ups available.")
+                else:
+                    followup_options = [
+                        f"{f['followup_type']} — {f['followup_date']} — ID {f['id']}"
+                        for f in followups
+                    ]
+
+                    selected_followup = st.selectbox(
+                        "Select follow-up",
+                        followup_options,
+                        key="update_followup_select"
                     )
-                    st.success("Follow-up saved successfully.")
-                    st.rerun()
+
+                    followup_id = int(selected_followup.split("ID ")[1])
+
+                    new_followup_status = st.selectbox(
+                        "New status",
+                        ["Pending", "Completed", "Cancelled"],
+                        key=f"new_followup_status_{followup_id}"
+                    )
+
+                    if st.button("Update Follow-up Status", use_container_width=True, key=f"update_followup_status_{followup_id}"):
+                        update_crm_followup_status(followup_id, new_followup_status)
+
+                        log_activity(
+                            st.session_state.get("username"),
+                            st.session_state.get("role"),
+                            "Updated CRM follow-up status",
+                            "crm_followups",
+                            followup_id,
+                            new_followup_status
+                        )
+
+                        st.session_state.crm_message = "Follow-up status updated successfully."
+                        st.rerun()
+
+            with followup_tab4:
+                st.markdown("### Delete follow-up")
+
+                if not followups:
+                    st.info("No follow-ups available.")
+                else:
+                    followup_options_delete = [
+                        f"{f['followup_type']} — {f['followup_date']} — ID {f['id']}"
+                        for f in followups
+                    ]
+
+                    selected_followup_delete = st.selectbox(
+                        "Select follow-up to delete",
+                        followup_options_delete,
+                        key="delete_followup_select"
+                    )
+
+                    followup_delete_id = int(selected_followup_delete.split("ID ")[1])
+
+                    confirm_delete_followup = st.checkbox(
+                        "I confirm deleting this follow-up",
+                        key=f"confirm_delete_followup_{followup_delete_id}"
+                    )
+
+                    if st.button("Delete Follow-up", use_container_width=True, key=f"delete_followup_btn_{followup_delete_id}"):
+                        if not confirm_delete_followup:
+                            st.warning("Please confirm first.")
+                        else:
+                            delete_crm_followup(followup_delete_id)
+
+                            log_activity(
+                                st.session_state.get("username"),
+                                st.session_state.get("role"),
+                                "Deleted CRM follow-up",
+                                "crm_followups",
+                                followup_delete_id,
+                                "Follow-up deleted"
+                            )
+
+                            st.session_state.crm_message = "Follow-up deleted successfully."
+                            st.rerun()
+
 elif menu == "AI Candidate Ranking":
     st.markdown('<div class="section-title">AI Candidate Ranking</div>', unsafe_allow_html=True)
 
