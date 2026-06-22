@@ -62,6 +62,11 @@ from services.supabase_manager import (
     update_candidate_stage_supabase,
     add_timeline_event_supabase,
     get_candidates_supabase,
+    candidate_exists,
+    add_candidate_supabase,
+    update_candidate_supabase,
+    delete_candidate_supabase
+    
 )
 
 from services.supabase_manager import (
@@ -923,21 +928,289 @@ elif menu == "Job Offers":
             else:
                 st.markdown(f"- {job_title} — {company} *(no link available)*")
 
+
 elif menu == "Candidates":
     st.markdown('<div class="section-title">Candidates</div>', unsafe_allow_html=True)
 
+    if "candidate_message" in st.session_state:
+        st.success(st.session_state.candidate_message)
+        del st.session_state.candidate_message
+
     candidates = get_candidates_supabase()
 
-    st.write("Candidates loaded:", len(candidates))
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "Candidate List",
+        "Add Candidate",
+        "Update Candidate",
+        "Delete Candidate"
+    ])
 
-    if candidates.empty:
-        st.warning("No candidates found.")
-    else:
-        st.dataframe(
-            candidates,
-            use_container_width=True,
-            hide_index=True
+    with tab1:
+        st.subheader("Candidate List")
+
+        if candidates.empty:
+            st.warning("No candidates found.")
+        else:
+            st.write("Candidates loaded:", len(candidates))
+            st.dataframe(candidates, use_container_width=True, hide_index=True)
+
+    with tab2:
+        st.subheader("Add Candidate")
+
+        name = st.text_input("Full name", key="add_candidate_name")
+        email = st.text_input("Email", key="add_candidate_email")
+        phone = st.text_input("Phone", key="add_candidate_phone")
+        country = st.text_input("Country", key="add_candidate_country")
+
+        experience_years = st.number_input(
+            "Experience years",
+            min_value=0,
+            max_value=50,
+            value=0,
+            key="add_candidate_experience"
         )
+
+        skills = st.text_area("Skills", key="add_candidate_skills")
+        languages = st.text_input("Languages", key="add_candidate_languages")
+
+        status = st.selectbox(
+            "Status",
+            ["Available", "Active", "Inactive", "Shortlisted", "Rejected", "Hired"],
+            key="add_candidate_status"
+        )
+
+        pipeline_stage = st.selectbox(
+            "Pipeline Stage",
+            ["Applied", "Screening", "Interview Scheduled", "Interview", "Offer", "Hired", "Rejected"],
+            key="add_candidate_stage"
+        )
+
+        if st.button("Add Candidate", use_container_width=True, key="add_candidate_btn"):
+            if not name.strip():
+                st.warning("Candidate name is required.")
+
+            elif not email.strip():
+                st.warning("Candidate email is required.")
+
+            elif candidate_exists(email, phone):
+                st.warning("Candidate already exists with the same email or phone.")
+
+            else:
+                try:
+                    add_candidate_supabase({
+                        "name": name.strip(),
+                        "email": email.strip().lower(),
+                        "phone": phone.strip(),
+                        "country": country.strip(),
+                        "experience_years": int(experience_years),
+                        "skills": skills.strip(),
+                        "languages": languages.strip(),
+                        "status": status,
+                        "pipeline_stage": pipeline_stage
+                    })
+
+                    log_activity(
+                        st.session_state.get("username"),
+                        st.session_state.get("role"),
+                        "Added candidate",
+                        "candidates",
+                        email.strip().lower(),
+                        name.strip()
+                    )
+
+                    st.session_state.candidate_message = "Candidate added successfully."
+                    st.rerun()
+
+                except Exception as e:
+                    if "unique_candidate_email" in str(e) or "candidates_email_key" in str(e):
+                        st.error("Candidate already exists with this email.")
+                    else:
+                        st.error("Unable to add candidate. Please try again.")
+
+    with tab3:
+        st.subheader("Update Candidate")
+
+        if candidates.empty:
+            st.warning("No candidates available to update.")
+        else:
+            candidate_options = (
+                candidates["name"].astype(str)
+                + " — ID "
+                + candidates["id"].astype(float).astype(int).astype(str)
+            ).tolist()
+
+            selected_candidate = st.selectbox(
+                "Select candidate to update",
+                candidate_options,
+                key="update_candidate_select"
+            )
+
+            candidate_id = int(float(selected_candidate.split("ID ")[1]))
+            candidate_df = get_candidate_by_id_supabase(candidate_id)
+
+            if candidate_df.empty:
+                st.warning("Candidate not found.")
+            else:
+                candidate = candidate_df.iloc[0]
+
+                edit_name = st.text_input(
+                    "Full name",
+                    value=str(candidate.get("name", "")),
+                    key=f"edit_candidate_name_{candidate_id}"
+                )
+
+                edit_email = st.text_input(
+                    "Email",
+                    value=str(candidate.get("email", "")),
+                    key=f"edit_candidate_email_{candidate_id}"
+                )
+
+                edit_phone = st.text_input(
+                    "Phone",
+                    value=str(candidate.get("phone", "")),
+                    key=f"edit_candidate_phone_{candidate_id}"
+                )
+
+                edit_country = st.text_input(
+                    "Country",
+                    value=str(candidate.get("country", "")),
+                    key=f"edit_candidate_country_{candidate_id}"
+                )
+
+                edit_experience = st.number_input(
+                    "Experience years",
+                    min_value=0,
+                    max_value=50,
+                    value=int(candidate.get("experience_years", 0) or 0),
+                    key=f"edit_candidate_experience_{candidate_id}"
+                )
+
+                edit_skills = st.text_area(
+                    "Skills",
+                    value=str(candidate.get("skills", "")),
+                    key=f"edit_candidate_skills_{candidate_id}"
+                )
+
+                edit_languages = st.text_input(
+                    "Languages",
+                    value=str(candidate.get("languages", "")),
+                    key=f"edit_candidate_languages_{candidate_id}"
+                )
+
+                status_options = ["Available", "Active", "Inactive", "Shortlisted", "Rejected", "Hired"]
+                current_status = str(candidate.get("status", "Available"))
+
+                edit_status = st.selectbox(
+                    "Status",
+                    status_options,
+                    index=status_options.index(current_status) if current_status in status_options else 0,
+                    key=f"edit_candidate_status_{candidate_id}"
+                )
+
+                stage_options = ["Applied", "Screening", "Interview Scheduled", "Interview", "Offer", "Hired", "Rejected"]
+                current_stage = str(candidate.get("pipeline_stage", "Applied"))
+
+                edit_stage = st.selectbox(
+                    "Pipeline Stage",
+                    stage_options,
+                    index=stage_options.index(current_stage) if current_stage in stage_options else 0,
+                    key=f"edit_candidate_stage_{candidate_id}"
+                )
+
+                if st.button("Update Candidate", use_container_width=True, key=f"update_candidate_btn_{candidate_id}"):
+                    if not edit_name.strip():
+                        st.warning("Candidate name is required.")
+
+                    elif not edit_email.strip():
+                        st.warning("Candidate email is required.")
+
+                    elif candidate_exists(edit_email, edit_phone, exclude_candidate_id=candidate_id):
+                        st.warning("Another candidate already exists with this email or phone.")
+
+                    else:
+                        try:
+                            update_candidate_supabase(
+                                candidate_id,
+                                {
+                                    "name": edit_name.strip(),
+                                    "email": edit_email.strip().lower(),
+                                    "phone": edit_phone.strip(),
+                                    "country": edit_country.strip(),
+                                    "experience_years": int(edit_experience),
+                                    "skills": edit_skills.strip(),
+                                    "languages": edit_languages.strip(),
+                                    "status": edit_status,
+                                    "pipeline_stage": edit_stage
+                                }
+                            )
+
+                            log_activity(
+                                st.session_state.get("username"),
+                                st.session_state.get("role"),
+                                "Updated candidate",
+                                "candidates",
+                                candidate_id,
+                                edit_name.strip()
+                            )
+
+                            st.session_state.candidate_message = "Candidate updated successfully."
+                            st.rerun()
+
+                        except Exception as e:
+                            if "unique_candidate_email" in str(e) or "candidates_email_key" in str(e):
+                                st.error("Another candidate already exists with this email.")
+                            else:
+                                st.error("Unable to update candidate. Please try again.")
+
+    with tab4:
+        st.subheader("Delete Candidate")
+
+        if candidates.empty:
+            st.warning("No candidates available to delete.")
+        else:
+            candidate_options_delete = (
+                candidates["name"].astype(str)
+                + " — ID "
+                + candidates["id"].astype(float).astype(int).astype(str)
+            ).tolist()
+
+            selected_delete_candidate = st.selectbox(
+                "Select candidate to delete",
+                candidate_options_delete,
+                key="delete_candidate_select"
+            )
+
+            delete_candidate_id = int(float(selected_delete_candidate.split("ID ")[1]))
+            delete_candidate_name = selected_delete_candidate.split(" — ID ")[0]
+
+            confirm_delete = st.checkbox(
+                "I confirm deleting this candidate",
+                key=f"confirm_delete_candidate_{delete_candidate_id}"
+            )
+
+            if st.button("Delete Candidate", use_container_width=True, key=f"delete_candidate_btn_{delete_candidate_id}"):
+                if not confirm_delete:
+                    st.warning("Please confirm first.")
+                else:
+                    try:
+                        delete_candidate_supabase(delete_candidate_id)
+
+                        log_activity(
+                            st.session_state.get("username"),
+                            st.session_state.get("role"),
+                            "Deleted candidate",
+                            "candidates",
+                            delete_candidate_id,
+                            delete_candidate_name
+                        )
+
+                        st.session_state.candidate_message = "Candidate deleted successfully."
+                        st.rerun()
+
+                    except Exception:
+                        st.error("Unable to delete candidate. Please try again.")
+
+                        
 elif menu == "Candidate Profile":
     st.markdown('<div class="section-title">Candidate Profile</div>', unsafe_allow_html=True)
 
