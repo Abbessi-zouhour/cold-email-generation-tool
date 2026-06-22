@@ -55,10 +55,12 @@ from services.analytics_dashboard import (
     get_interviews_by_status
 )
 from services.candidate_timeline import *
+
 from services.supabase_manager import (
     add_interview_supabase,
     delete_interview_supabase,
     get_interviews_supabase,
+    update_interview_supabase,
     update_candidate_stage_supabase,
     add_timeline_event_supabase,
     get_candidates_supabase,
@@ -118,7 +120,8 @@ from services.interview_reminders import (
     get_interview_reminders,
     get_pending_reminders,
     mark_reminder_sent,
-    delete_interview_reminder
+    delete_interview_reminder,
+    update_interview_reminder
 )
 from services.pdf_reports import generate_ranking_pdf
 from services.activity_logger import log_activity, get_activity_logs
@@ -1128,8 +1131,13 @@ elif menu == "Recruitment CRM":
                             st.session_state.crm_message = "Follow-up deleted successfully."
                             st.rerun()
 
+
 elif menu == "AI Candidate Ranking":
     st.markdown('<div class="section-title">AI Candidate Ranking</div>', unsafe_allow_html=True)
+
+    if "ranking_message" in st.session_state:
+        st.success(st.session_state.ranking_message)
+        del st.session_state.ranking_message
 
     candidates = get_candidates_supabase()
     jobs = get_jobs_supabase()
@@ -1150,11 +1158,15 @@ elif menu == "AI Candidate Ranking":
         + jobs["id"].astype(float).astype(int).astype(str)
     ).tolist()
 
-    selected_job = st.selectbox("Select job for ranking", job_options)
+    selected_job = st.selectbox(
+        "Select job for ranking",
+        job_options,
+        key="ranking_job_select"
+    )
 
     selected_job_id = int(float(selected_job.split("ID ")[1]))
 
-    if st.button("Generate AI Ranking", use_container_width=True):
+    if st.button("Generate AI Ranking", use_container_width=True, key="generate_ai_ranking_btn"):
         with st.spinner("Ranking candidates..."):
             job, top_matches, saved_rankings = generate_candidate_ranking(
                 job_id=selected_job_id,
@@ -1162,6 +1174,7 @@ elif menu == "AI Candidate Ranking":
                 jobs=jobs,
                 created_by=st.session_state.get("username", "Unknown")
             )
+
         log_activity(
             st.session_state.get("username"),
             st.session_state.get("role"),
@@ -1170,6 +1183,7 @@ elif menu == "AI Candidate Ranking":
             selected_job_id,
             job.get("job_title", "")
         )
+
         st.success("Candidate ranking generated and saved.")
 
         st.markdown("### Selected Job")
@@ -1188,78 +1202,131 @@ Required Skills: {job.get("required_skills", "")}
 
     st.divider()
 
-    st.subheader("Saved Rankings")
-
     rankings = get_candidate_rankings()
 
-    if rankings:
-        st.dataframe(rankings, use_container_width=True, hide_index=True)
-    else:
-        st.info("No rankings saved yet.")
-    st.subheader("Saved Rankings")
+    ranking_tab1, ranking_tab2, ranking_tab3 = st.tabs([
+        "Saved Rankings",
+        "Export PDF Report",
+        "Delete Ranking"
+    ])
 
-    rankings = get_candidate_rankings()
+    with ranking_tab1:
+        st.subheader("Saved Rankings")
 
-    if rankings:
-        st.dataframe(rankings, use_container_width=True, hide_index=True)
+        if rankings:
+            st.dataframe(rankings, use_container_width=True, hide_index=True)
+        else:
+            st.info("No rankings saved yet.")
 
-        # PDF EXPORT SECTION STARTS HERE
-        st.markdown("### Export Ranking Report")
+    with ranking_tab2:
+        st.subheader("Export Ranking Report")
 
-        job_titles = sorted(
-            set([
-                r.get("job_title", "")
-                for r in rankings
-                if r.get("job_title")
-            ])
-        )
-
-        selected_job_title = st.selectbox(
-            "Select job report",
-            job_titles,
-            key="ranking_pdf_job_select"
-        )
-
-        filtered_rankings = [
-            r for r in rankings
-            if r.get("job_title") == selected_job_title
-        ]
-
-        company = (
-            filtered_rankings[0].get("company", "")
-            if filtered_rankings else ""
-        )
-
-        if st.button(
-            "Generate PDF Report",
-            use_container_width=True,
-            key="generate_ranking_pdf"
-        ):
-
-            pdf_path = generate_ranking_pdf(
-                job_title=selected_job_title,
-                company=company,
-                rankings=filtered_rankings
+        if not rankings:
+            st.info("No rankings saved yet.")
+        else:
+            job_titles = sorted(
+                set([
+                    r.get("job_title", "")
+                    for r in rankings
+                    if r.get("job_title")
+                ])
             )
-            log_activity(
-                st.session_state.get("username"),
-                st.session_state.get("role"),
-                "Generated PDF report",
-                "candidate_rankings",
-                selected_job_title,
-                company
+
+            selected_job_title = st.selectbox(
+                "Select job report",
+                job_titles,
+                key="ranking_pdf_job_select"
             )
-            with open(pdf_path, "rb") as file:
-                st.download_button(
-                    label="Download PDF Report",
-                    data=file,
-                    file_name=pdf_path.split("/")[-1],
-                    mime="application/pdf",
-                    use_container_width=True
+
+            filtered_rankings = [
+                r for r in rankings
+                if r.get("job_title") == selected_job_title
+            ]
+
+            company = (
+                filtered_rankings[0].get("company", "")
+                if filtered_rankings else ""
+            )
+
+            if st.button(
+                "Generate PDF Report",
+                use_container_width=True,
+                key="generate_ranking_pdf"
+            ):
+                pdf_path = generate_ranking_pdf(
+                    job_title=selected_job_title,
+                    company=company,
+                    rankings=filtered_rankings
                 )
 
-    else:
-        st.info("No rankings saved yet.")
+                log_activity(
+                    st.session_state.get("username"),
+                    st.session_state.get("role"),
+                    "Generated PDF report",
+                    "candidate_rankings",
+                    selected_job_title,
+                    company
+                )
+
+                with open(pdf_path, "rb") as file:
+                    st.download_button(
+                        label="Download PDF Report",
+                        data=file,
+                        file_name=pdf_path.split("/")[-1],
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+
+    with ranking_tab3:
+        st.subheader("Delete Ranking")
+
+        if not rankings:
+            st.info("No rankings available to delete.")
+        else:
+            ranking_options = [
+                f"{r.get('candidate_name', 'Unknown')} — {r.get('job_title', 'Unknown Job')} — ID {r.get('id')}"
+                for r in rankings
+            ]
+
+            selected_ranking_delete = st.selectbox(
+                "Select ranking to delete",
+                ranking_options,
+                key="delete_ranking_select"
+            )
+
+            ranking_delete_id = int(selected_ranking_delete.split("ID ")[1])
+
+            confirm_delete_ranking = st.checkbox(
+                "I confirm deleting this ranking",
+                key=f"confirm_delete_ranking_{ranking_delete_id}"
+            )
+
+            if st.button(
+                "Delete Ranking",
+                use_container_width=True,
+                key=f"delete_ranking_btn_{ranking_delete_id}"
+            ):
+                if not confirm_delete_ranking:
+                    st.warning("Please confirm first.")
+                else:
+                    try:
+                        delete_candidate_ranking(ranking_delete_id)
+
+                        log_activity(
+                            st.session_state.get("username"),
+                            st.session_state.get("role"),
+                            "Deleted AI ranking",
+                            "candidate_rankings",
+                            ranking_delete_id,
+                            "Ranking deleted"
+                        )
+
+                        st.session_state.ranking_message = "Ranking deleted successfully."
+                        st.rerun()
+
+                    except Exception:
+                        st.error("Unable to delete ranking. Please try again.")
+
 elif menu == "Job Offers":
     st.markdown('<div class="section-title">Job Offers</div>', unsafe_allow_html=True)
 
@@ -2176,8 +2243,12 @@ elif menu == "Candidate Timeline":
             width="stretch",
             hide_index=True
         )
+        
 elif menu == "Interview Scheduler":
     st.markdown('<div class="section-title">Interview Scheduler</div>', unsafe_allow_html=True)
+    if "interview_message" in st.session_state:
+        st.success(st.session_state.interview_message)
+        del st.session_state.interview_message
 
     tab_schedule, tab_records = st.tabs([
         "Schedule Interview",
@@ -2293,7 +2364,102 @@ Current Stage: {candidate_row.get('pipeline_stage','')}
                 width="stretch",
                 hide_index=True
             )
+            st.markdown("### Edit Interview")
 
+            edit_interview_options = (
+                interviews["candidate_name"].astype(str)
+                + " - "
+                + interviews["job_title"].astype(str)
+                + " — ID "
+                + interviews["id"].astype(float).astype(int).astype(str)
+            )
+
+            selected_edit_interview = st.selectbox(
+                "Select interview to edit",
+                edit_interview_options,
+                key="edit_interview_select"
+            )
+
+            edit_interview_id = int(float(selected_edit_interview.split("ID ")[1]))
+
+            edit_interview_row = interviews[
+                interviews["id"].astype(float).astype(int) == edit_interview_id
+            ].iloc[0]
+
+            edit_job_title = st.text_input(
+                "Job title",
+                value=str(edit_interview_row.get("job_title", "")),
+                key=f"edit_interview_job_{edit_interview_id}"
+            )
+
+            edit_company = st.text_input(
+                "Company",
+                value=str(edit_interview_row.get("company", "")),
+                key=f"edit_interview_company_{edit_interview_id}"
+            )
+
+            edit_interview_date = st.date_input(
+                "Interview date",
+                value=pd.to_datetime(edit_interview_row.get("interview_date")).date(),
+                key=f"edit_interview_date_{edit_interview_id}"
+            )
+
+            edit_interview_time = st.time_input(
+                "Interview time",
+                value=pd.to_datetime(str(edit_interview_row.get("interview_time"))).time(),
+                key=f"edit_interview_time_{edit_interview_id}"
+            )
+
+            edit_interview_type = st.selectbox(
+                "Interview type",
+                ["Online", "Phone", "On-site", "Technical", "HR"],
+                index=["Online", "Phone", "On-site", "Technical", "HR"].index(
+                    str(edit_interview_row.get("interview_type", "Online"))
+                )
+                if str(edit_interview_row.get("interview_type", "Online")) in ["Online", "Phone", "On-site", "Technical", "HR"]
+                else 0,
+                key=f"edit_interview_type_{edit_interview_id}"
+            )
+
+            edit_status = st.selectbox(
+                "Status",
+                ["Scheduled", "Completed", "Cancelled"],
+                key=f"edit_interview_status_{edit_interview_id}"
+            )
+
+            edit_notes = st.text_area(
+                "Notes",
+                value=str(edit_interview_row.get("notes", "")),
+                key=f"edit_interview_notes_{edit_interview_id}"
+            )
+
+            if st.button("Update Interview", use_container_width=True, key=f"update_interview_btn_{edit_interview_id}"):
+                if not edit_job_title.strip() or not edit_company.strip():
+                    st.warning("Job title and company are required.")
+                else:
+                    update_interview_supabase(
+                        edit_interview_id,
+                        edit_job_title,
+                        edit_company,
+                        edit_interview_date,
+                        edit_interview_time,
+                        edit_interview_type,
+                        edit_notes,
+                        edit_status
+                    )
+
+                    log_activity(
+                        st.session_state.get("username"),
+                        st.session_state.get("role"),
+                        "Updated interview",
+                        "interviews",
+                        edit_interview_id,
+                        edit_job_title
+                    )
+
+                    st.session_state.interview_message = "Interview updated successfully."
+                    st.rerun()
+        
             if "id" in interviews.columns:
                 interview_options = (
                     interviews["candidate_name"].astype(str)
@@ -2315,7 +2481,16 @@ Current Stage: {candidate_row.get('pipeline_stage','')}
                 if st.button("Delete interview"):
                     if confirm:
                         delete_interview_supabase(interview_id)
-                        st.success("Interview deleted successfully.")
+                        log_activity(
+                            st.session_state.get("username"),
+                            st.session_state.get("role"),
+                            "Deleted interview",
+                            "interviews",
+                            interview_id,
+                            selected_interview
+                        )
+
+                        st.session_state.interview_message = "Interview deleted successfully."
                         st.rerun()
                     else:
                         st.warning("Please confirm first.")
@@ -2379,8 +2554,10 @@ elif menu == "Interview Reminders":
         '<div class="section-title">Interview Reminders</div>',
         unsafe_allow_html=True
     )
-
-    candidates = get_candidates_supabase()
+    if "reminder_message" in st.session_state:
+        st.success(st.session_state.reminder_message)
+        del st.session_state.reminder_message
+        candidates = get_candidates_supabase()
 
     if candidates.empty:
         st.warning("No candidates found.")
@@ -2456,6 +2633,112 @@ elif menu == "Interview Reminders":
             use_container_width=True,
             hide_index=True
         )
+        st.markdown("### Edit Reminder")
+
+        reminder_edit_options = [
+            f"{r['candidate_name']} — {r['interview_date']} — ID {r['id']}"
+            for r in reminders
+        ]
+
+        selected_edit_reminder = st.selectbox(
+            "Select reminder to edit",
+            reminder_edit_options,
+            key="edit_reminder_select"
+        )
+
+        edit_reminder_id = int(selected_edit_reminder.split("ID ")[1])
+
+        edit_reminder = next(
+            r for r in reminders if int(r["id"]) == edit_reminder_id
+        )
+
+        edit_interview_date = st.date_input(
+            "Edit Interview Date",
+            value=pd.to_datetime(edit_reminder["interview_date"]).date(),
+            key=f"edit_reminder_date_{edit_reminder_id}"
+        )
+
+        edit_interview_time = st.time_input(
+            "Edit Interview Time",
+            value=pd.to_datetime(edit_reminder["interview_date"]).time(),
+            key=f"edit_reminder_time_{edit_reminder_id}"
+        )
+
+        edit_interview_type = st.selectbox(
+            "Edit Interview Type",
+            ["Phone", "Video", "On-site"],
+            index=["Phone", "Video", "On-site"].index(
+                edit_reminder.get("interview_type", "Phone")
+            )
+            if edit_reminder.get("interview_type", "Phone") in ["Phone", "Video", "On-site"]
+            else 0,
+            key=f"edit_reminder_type_{edit_reminder_id}"
+        )
+
+        if st.button(
+            "Update Reminder",
+            use_container_width=True,
+            key=f"update_reminder_btn_{edit_reminder_id}"
+        ):
+            new_interview_datetime = f"{edit_interview_date} {edit_interview_time}"
+
+            update_interview_reminder(
+                reminder_id=edit_reminder_id,
+                interview_date=new_interview_datetime,
+                interview_type=edit_interview_type
+            )
+
+            log_activity(
+                st.session_state.get("username"),
+                st.session_state.get("role"),
+                "Updated interview reminder",
+                "interview_reminders",
+                edit_reminder_id,
+                new_interview_datetime
+            )
+
+            st.session_state.reminder_message = "Interview reminder updated successfully."
+            st.rerun()
+        st.markdown("### Delete Reminder")
+        reminder_delete_options = [
+            f"{r['candidate_name']} — {r['interview_date']} — ID {r['id']}"
+            for r in reminders
+        ]
+
+        selected_delete_reminder = st.selectbox(
+            "Select reminder to delete",
+            reminder_delete_options,
+            key="delete_reminder_select"
+        )
+
+        delete_reminder_id = int(selected_delete_reminder.split("ID ")[1])
+
+        confirm_delete_reminder = st.checkbox(
+            "I confirm deleting this reminder",
+            key=f"confirm_delete_reminder_{delete_reminder_id}"
+        )
+
+        if st.button(
+            "Delete Reminder",
+            use_container_width=True,
+            key=f"delete_reminder_btn_{delete_reminder_id}"
+        ):
+            if not confirm_delete_reminder:
+                st.warning("Please confirm first.")
+            else:
+                delete_interview_reminder(delete_reminder_id)
+
+                log_activity(
+                    st.session_state.get("username"),
+                    st.session_state.get("role"),
+                    "Deleted interview reminder",
+                    "interview_reminders",
+                    delete_reminder_id,
+                    selected_delete_reminder
+                )
+
+                st.session_state.reminder_message = "Interview reminder deleted successfully."
+                st.rerun()
         st.markdown("### Send Reminder Email")
 
         pending_reminders = get_pending_reminders()

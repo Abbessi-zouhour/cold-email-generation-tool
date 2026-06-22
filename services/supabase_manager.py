@@ -2,6 +2,7 @@ import pandas as pd
 from services.supabase_client import supabase
 
 
+
 def to_dataframe(response):
     data = response.data if response.data else []
     return pd.DataFrame(data)
@@ -272,6 +273,31 @@ def delete_interview_supabase(interview_id):
     response = (
         supabase.table("interviews")
         .delete()
+        .eq("id", int(interview_id))
+        .execute()
+    )
+    return response.data
+def update_interview_supabase(
+    interview_id,
+    job_title,
+    company,
+    interview_date,
+    interview_time,
+    interview_type,
+    notes,
+    status
+):
+    response = (
+        supabase.table("interviews")
+        .update({
+            "job_title": job_title,
+            "company": company,
+            "interview_date": str(interview_date),
+            "interview_time": str(interview_time),
+            "interview_type": interview_type,
+            "notes": notes,
+            "status": status
+        })
         .eq("id", int(interview_id))
         .execute()
     )

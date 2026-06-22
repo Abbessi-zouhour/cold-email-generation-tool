@@ -62,3 +62,27 @@ def delete_interview_reminder(reminder_id):
         .execute()
     )
     return response.data
+def delete_interview_reminder(reminder_id):
+    response = (
+        supabase.table("interview_reminders")
+        .delete()
+        .eq("id", int(reminder_id))
+        .execute()
+    )
+    return response.data
+def update_interview_reminder(
+    reminder_id,
+    interview_date,
+    interview_type
+):
+    response = (
+        supabase.table("interview_reminders")
+        .update({
+            "interview_date": str(interview_date),
+            "interview_type": interview_type
+        })
+        .eq("id", int(reminder_id))
+        .execute()
+    )
+
+    return response.data
