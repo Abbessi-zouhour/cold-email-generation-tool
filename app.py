@@ -151,6 +151,23 @@ def load_css():
 
 load_css()
 
+# =========================
+# DEMO MODE
+# =========================
+is_demo = st.session_state.get("username", "").lower() == "demo"
+
+if is_demo:
+    st.info(
+        "Demo Mode\n\n"
+        "You can explore all features safely. "
+        "Creating, editing, deleting, sending emails, and changing settings are disabled."
+    )
+
+def block_demo_action():
+    if is_demo:
+        st.warning("Demo Mode: this action is disabled for public visitors.")
+        st.stop()
+
 
 ROLE_PERMISSIONS = {
     "Admin": [
@@ -283,7 +300,7 @@ st.sidebar.markdown(
     unsafe_allow_html=True
 )
 
-if st.sidebar.button("Settings", use_container_width=True):
+if st.sidebar.button("Settings", use_container_width=True, disabled=is_demo):
     st.session_state.page = "Settings"
     st.rerun()
 
@@ -570,7 +587,7 @@ elif menu == "Recruitment CRM":
 
             owner = st.session_state.get("username", "Unknown")
 
-            if st.button("Save Company", use_container_width=True, key="save_company_btn"):
+            if st.button("Save Company", use_container_width=True, key="save_company_btn", disabled=is_demo):
 
                 if not company_name.strip():
                     st.warning("Company name is required.")
@@ -723,7 +740,7 @@ elif menu == "Recruitment CRM":
                     key=f"confirm_delete_company_{company_delete_id}"
                 )
 
-                if st.button("Delete Company", use_container_width=True, key=f"delete_company_btn_{company_delete_id}"):
+                if st.button("Delete Company", use_container_width=True, key=f"delete_company_btn_{company_delete_id}", disabled=is_demo):
                     if not confirm_delete_company:
                         st.warning("Please confirm first.")
                     else:
@@ -786,7 +803,7 @@ elif menu == "Recruitment CRM":
                 phone = st.text_input("Phone", key="add_contact_phone")
                 linkedin = st.text_input("LinkedIn", key="add_contact_linkedin")
 
-                if st.button("Save Contact", use_container_width=True, key="save_contact_btn"):
+                if st.button("Save Contact", use_container_width=True, key="save_contact_btn", disabled=is_demo):
 
                     if not full_name.strip():
                         st.warning("Contact name is required.")
@@ -873,7 +890,7 @@ elif menu == "Recruitment CRM":
                         key=f"edit_contact_linkedin_{contact_id}"
                     )
 
-                    if st.button("Update Contact", use_container_width=True, key=f"update_contact_btn_{contact_id}"):
+                    if st.button("Update Contact", use_container_width=True, key=f"update_contact_btn_{contact_id}", disabled=is_demo):
 
                         if not edit_full_name.strip():
                             st.warning("Contact name is required.")
@@ -936,7 +953,7 @@ elif menu == "Recruitment CRM":
                         key=f"confirm_delete_contact_{contact_delete_id}"
                     )
 
-                    if st.button("Delete Contact", use_container_width=True, key=f"delete_contact_btn_{contact_delete_id}"):
+                    if st.button("Delete Contact", use_container_width=True, key=f"delete_contact_btn_{contact_delete_id}", disabled=is_demo):
                         if not confirm_delete_contact:
                             st.warning("Please confirm first.")
                         else:
@@ -1023,7 +1040,7 @@ elif menu == "Recruitment CRM":
                     key="add_followup_status"
                 )
 
-                if st.button("Save Follow-up", use_container_width=True, key="save_followup_btn"):
+                if st.button("Save Follow-up", use_container_width=True, key="save_followup_btn", disabled=is_demo):
                     if not notes.strip():
                         st.warning("Follow-up notes are required.")
                     else:
@@ -1074,7 +1091,7 @@ elif menu == "Recruitment CRM":
                         key=f"new_followup_status_{followup_id}"
                     )
 
-                    if st.button("Update Follow-up Status", use_container_width=True, key=f"update_followup_status_{followup_id}"):
+                    if st.button("Update Follow-up Status", use_container_width=True, key=f"update_followup_status_{followup_id}", disabled=is_demo):
                         update_crm_followup_status(followup_id, new_followup_status)
 
                         log_activity(
@@ -1113,7 +1130,7 @@ elif menu == "Recruitment CRM":
                         key=f"confirm_delete_followup_{followup_delete_id}"
                     )
 
-                    if st.button("Delete Follow-up", use_container_width=True, key=f"delete_followup_btn_{followup_delete_id}"):
+                    if st.button("Delete Follow-up", use_container_width=True, key=f"delete_followup_btn_{followup_delete_id}", disabled=is_demo):
                         if not confirm_delete_followup:
                             st.warning("Please confirm first.")
                         else:
@@ -1532,7 +1549,7 @@ elif menu == "Candidates":
             key="add_candidate_stage"
         )
 
-        if st.button("Add Candidate", use_container_width=True, key="add_candidate_btn"):
+        if st.button("Add Candidate", use_container_width=True, key="add_candidate_btn", disabled=is_demo):
             if not name.strip():
                 st.warning("Candidate name is required.")
 
@@ -1664,7 +1681,7 @@ elif menu == "Candidates":
                     key=f"edit_candidate_stage_{candidate_id}"
                 )
 
-                if st.button("Update Candidate", use_container_width=True, key=f"update_candidate_btn_{candidate_id}"):
+                if st.button("Update Candidate", use_container_width=True, key=f"update_candidate_btn_{candidate_id}", disabled=is_demo):
                     if not edit_name.strip():
                         st.warning("Candidate name is required.")
 
@@ -1735,7 +1752,7 @@ elif menu == "Candidates":
                 key=f"confirm_delete_candidate_{delete_candidate_id}"
             )
 
-            if st.button("Delete Candidate", use_container_width=True, key=f"delete_candidate_btn_{delete_candidate_id}"):
+            if st.button("Delete Candidate", use_container_width=True, key=f"delete_candidate_btn_{delete_candidate_id}", disabled=is_demo):
                 if not confirm_delete:
                     st.warning("Please confirm first.")
                 else:
@@ -1929,7 +1946,7 @@ elif menu == "Candidate Pipeline":
         index=stages.index(current_stage) if current_stage in stages else 0
     )
 
-    if st.button("Update candidate stage", width="stretch"):
+    if st.button("Update candidate stage", width="stretch", disabled=is_demo):
         update_candidate_stage_supabase(int(selected_id), new_stage)
 
         add_timeline_event_supabase(
@@ -2209,7 +2226,7 @@ elif menu == "Candidate Timeline":
 
     notes = st.text_area("Notes")
 
-    if st.button("Add Timeline Event", width="stretch"):
+    if st.button("Add Timeline Event", width="stretch", disabled=is_demo):
         add_timeline_event_supabase(
             candidate_id=candidate_id,
             event_date=event_date,
@@ -2315,7 +2332,7 @@ Current Stage: {candidate_row.get('pipeline_stage','')}
 
             notes = st.text_area("Notes")
 
-            if st.button("Save interview", width="stretch"):
+            if st.button("Save interview", width="stretch", disabled=is_demo):
                 if job_title.strip() and company.strip():
                     try:
                         result = add_interview_supabase(
@@ -2433,7 +2450,7 @@ Current Stage: {candidate_row.get('pipeline_stage','')}
                 key=f"edit_interview_notes_{edit_interview_id}"
             )
 
-            if st.button("Update Interview", use_container_width=True, key=f"update_interview_btn_{edit_interview_id}"):
+            if st.button("Update Interview", use_container_width=True, key=f"update_interview_btn_{edit_interview_id}", disabled=is_demo):
                 if not edit_job_title.strip() or not edit_company.strip():
                     st.warning("Job title and company are required.")
                 else:
@@ -2478,7 +2495,7 @@ Current Stage: {candidate_row.get('pipeline_stage','')}
 
                 confirm = st.checkbox("I confirm delete this interview")
 
-                if st.button("Delete interview"):
+                if st.button("Delete interview", disabled=is_demo):
                     if confirm:
                         delete_interview_supabase(interview_id)
                         log_activity(
@@ -2536,7 +2553,7 @@ Current Stage: {candidate_row.get('pipeline_stage','')}
 
                     subject = f"Interview Invitation - {email_interview_row.get('job_title', '')}"
 
-                    if st.button("Send email to candidate", width="stretch"):
+                    if st.button("Send email to candidate", width="stretch", disabled=is_demo):
                         success, message = send_email(
                             to_email=str(email_interview_row.get("candidate_email", "")),
                             subject=subject,
@@ -2787,7 +2804,7 @@ elif menu == "Interview Reminders":
                 height=260
             )
 
-            if st.button("Send Reminder Email", use_container_width=True):
+            if st.button("Send Reminder Email", use_container_width=True, disabled=is_demo):
                 if not reminder.get("candidate_email"):
                     st.error("Candidate email is missing.")
                 else:
@@ -3568,7 +3585,7 @@ elif menu == "Client Communication Agent":
                 key="add_client_status"
             )
 
-            if st.button("Save client", key="save_client_btn"):
+            if st.button("Save client", key="save_client_btn", disabled=is_demo):
                     if name.strip() and service.strip():
                         try:
                             add_client_supabase(
@@ -3636,7 +3653,7 @@ elif menu == "Client Communication Agent":
                     key="edit_client_status"
                 )
 
-                if st.button("Update client", key="update_client_btn"):
+                if st.button("Update client", key="update_client_btn", disabled=is_demo):
                     update_client_supabase(
                         client_id,
                         edit_name,
@@ -3672,7 +3689,7 @@ elif menu == "Client Communication Agent":
                             key="confirm_delete_client"
                         )
 
-                        if st.button("Delete client", key="delete_client_btn"):
+                        if st.button("Delete client", key="delete_client_btn", disabled=is_demo):
                             if confirm:
                                 delete_client_supabase(client_id)
                                 st.success("Client deleted successfully.")
@@ -3704,7 +3721,7 @@ elif menu == "Client Communication Agent":
                     key="confirm_delete_client"
                 )
 
-                if st.button("Delete client", key="delete_client_btn"):
+                if st.button("Delete client", key="delete_client_btn", disabled=is_demo):
                     if confirm:
                         delete_client_supabase(client_id)
                         st.success("Client deleted successfully.")
@@ -3769,7 +3786,7 @@ elif st.session_state.page == "Settings":
     new_password = st.text_input("New password", type="password")
     confirm_password = st.text_input("Confirm new password", type="password")
 
-    if st.button("Change password", use_container_width=True, key="settings_change_password_btn"):
+    if st.button("Change password", use_container_width=True, key="settings_change_password_btn", disabled=is_demo):
         user = get_user(current_user, old_password)
 
         if not user:
@@ -3825,7 +3842,7 @@ elif st.session_state.page == "Settings":
             )
             new_active = st.checkbox("Active", value=True, key="add_user_active")
 
-            if st.button("Create User", use_container_width=True, key="create_user_btn"):
+            if st.button("Create User", use_container_width=True, key="create_user_btn", disabled=is_demo):
                 if not new_username.strip():
                     st.warning("Please enter a username.")
 
