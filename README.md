@@ -510,6 +510,13 @@ Built using:
 - OpenAI
 
 ---
+## Project Architecture
+
+![TalentBridge Architecture](docs/architecture.png)
+
+## Demo Video
+
+[Watch the demo video](demo/talentbridge_demo.mp4)
 
 ## 📜 License
 
